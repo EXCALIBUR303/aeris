@@ -38,7 +38,9 @@ def wait_for_gz_world_ready(
     """Block until Gazebo reports the named world's scene-info service is up.
 
     Raises :class:`SimulationLaunchError` on timeout, with the last
-    ``gz service -i`` output attached for diagnosis.
+    ``gz service -i`` output attached for diagnosis — or immediately,
+    without retrying, if the ``gz`` command isn't found at all (retrying
+    can't fix a missing binary; see ``docs/mac-setup.md``).
     """
     clock = clock or WallClock()
     deadline = clock.now() + timeout_s
@@ -60,6 +62,11 @@ def wait_for_gz_world_ready(
             # return promptly — it blocks until its own internal timeout.
             # That's "not ready yet," not an error: keep polling.
             last_output = "(gz service -i timed out)"
+        except FileNotFoundError as exc:
+            raise SimulationLaunchError(
+                "the 'gz' command was not found (is Gazebo Harmonic installed and on "
+                "PATH? see docs/mac-setup.md)"
+            ) from exc
         if "Service providers" in last_output:
             _logger.info("gz_world.ready", world=world)
             return
