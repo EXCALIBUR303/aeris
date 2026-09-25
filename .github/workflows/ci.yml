@@ -8,7 +8,10 @@ on:
 jobs:
   test:
     name: lint + typecheck + unit tests (import contracts included)
-    runs-on: macos-14
+    # macos-14 fails: mavsdk 4.0.0's wheels are macosx_15_0+ only (found
+    # in Phase 3 — GitHub's macos-14 image reports macosx_14_0, below
+    # mavsdk's minimum).
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
