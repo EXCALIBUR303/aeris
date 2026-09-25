@@ -1,11 +1,11 @@
-.PHONY: setup test test-unit lint typecheck imports format fmt-check sim-smoke clean
+.PHONY: setup test test-unit lint typecheck imports format fmt-check sim-smoke sim-up clean
 
 # Thin wrappers only — see AERIS_TECHNICAL_SPEC.md §14 for the reasoning.
 # Each target does exactly one obvious thing; nothing here is a build system
 # in disguise.
 
 setup:
-	uv sync --extra dev
+	uv sync --extra dev --extra sim
 
 test: test-unit
 
@@ -30,12 +30,13 @@ typecheck:
 imports:
 	uv run lint-imports
 
-# Placeholder until Phase 3 creates aeris.simulation.launcher — see
-# docs/phase_reports/phase-1.md for the manual equivalent in the meantime.
+# Needs a built PX4 (docs/mac-setup.md) — not run in hosted CI (spec §44.2).
 sim-smoke:
-	@echo "sim-smoke is not implemented yet — see docs/mac-setup.md for the" \
-	      "manual PX4 SITL smoke test until Phase 3 adds a launcher CLI."
-	@exit 1
+	uv run pytest tests/sim -v -m sim
+
+# Also needs a built PX4. Ctrl-C to stop.
+sim-up:
+	uv run aeris sim up --profile headless_x500
 
 clean:
 	find . -type d -name "__pycache__" -not -path "./aeris-deps/*" -exec rm -rf {} +
