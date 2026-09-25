@@ -1,0 +1,37 @@
+# AERIS — PX4 SITL reference data: ports and airframe autostart IDs.
+#
+# Transcribed directly from the pinned PX4 checkout in Phase 3:
+#   - ports: ROMFS/px4fmu_common/init.d-posix/px4-rc.mavlink
+#   - airframe IDs: ROMFS/px4fmu_common/init.d-posix/airframes/*_gz_*
+#
+# Port math is also implemented (and tested) in
+# aeris/simulation/launcher/ports.py — this file is the human-readable
+# cross-reference, not something code loads at runtime. Re-verify both
+# against px4-rc.mavlink if the PX4 pin in versions.lock.yaml ever changes.
+
+ports:
+  # local = the port PX4 itself opens (an external tool connects to this).
+  # remote = where PX4 proactively sends packets (relevant e.g. for
+  #          injecting external-vision input — spec §34.2).
+  gcs_local: "18570 + instance"          # QGroundControl connects here
+  offboard_local: "14580 + instance"     # aeris.vehicle adapters connect here
+  offboard_remote: "14540 + instance"    # (14549 for instance > 9)
+  onboard_payload_local: "14280 + instance"
+  onboard_payload_remote: "14030 + instance"
+  onboard_gimbal_local: "13030 + instance"
+  onboard_gimbal_remote: "13280 + instance"
+
+# gz_<model> -> PX4_SYS_AUTOSTART airframe ID. PX4 determines this itself
+# by matching PX4_SIM_MODEL against airframes/<id>_<model> — AERIS never
+# sets PX4_SYS_AUTOSTART directly, this table is documentation only.
+gz_model_autostart_ids:
+  gz_x500: 4001               # base quadrotor — Phase 1/3 default profile
+  gz_x500_depth: 4002         # + forward depth/RGB camera — Phase 1-confirmed working headless
+  gz_x500_vision: 4005        # + external-vision odometry (ORACLE-VIO, spec §34.2)
+  gz_x500_mono_cam: 4010
+  gz_x500_lidar_2d: 4013      # + 2D LiDAR — Phase 1-confirmed working headless
+  gz_x500_mono_cam_down: 4014
+  gz_x500_lidar_down: 4016
+  gz_x500_lidar_front: 4017
+  gz_x500_gimbal: 4019
+  gz_x500_flow: 4021          # + optical flow (GPS-denied path, spec §34.2)

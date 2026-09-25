@@ -1,0 +1,27 @@
+# AERIS SITL baseline parameters.
+#
+# Format: one "NAME VALUE" pair per line, '#' starts a comment. Parsed by
+# aeris.simulation.launcher.params.parse_params_file and applied over
+# MAVLink PARAM_SET by aeris.simulation.launcher.params.apply_params.
+#
+# This is intentionally minimal for Phase 3 — it demonstrates the
+# mechanism with one well-justified setting, not a general SITL tuning
+# profile. Later phases add their own params (or their own profile that
+# extends this one) rather than growing this file arbitrarily.
+
+# COM_RC_IN_MODE=4 ("Disable manual control"): AERIS SITL has no RC
+# transmitter and no MAVLink joystick — commanding comes entirely through
+# MAVLink COMMAND_LONG / offboard setpoints. The PX4 default (3, "RC or
+# MAVLink, keep first") is meant for a real vehicle with a real transmitter
+# and is the standard community recommendation to change for a
+# companion-computer-only setup. Source: PX4
+# src/modules/commander/commander_params.c, read directly from the pinned
+# checkout in Phase 3.
+#
+# NOTE: this is a plausible, not yet confirmed, lead on the arm-rejection
+# finding from Phase 1 (docs/phase_reports/phase-1.md) — Phase 1's MAVLink
+# arm attempt returned MAV_RESULT_TEMPORARILY_REJECTED for an undiagnosed
+# reason. Phase 5 (programmatic takeoff/flight/landing) owns diagnosing
+# that properly; this setting is applied here because it's independently
+# well-justified for AERIS's SITL setup either way.
+COM_RC_IN_MODE 4

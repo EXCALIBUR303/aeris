@@ -15,6 +15,12 @@ dependencies = [
     "structlog>=24.4",
 ]
 
+[project.scripts]
+# The `aeris` CLI needs aeris.simulation (pymavlink), so it only works with
+# the "sim" extra installed — `uv sync --extra sim` (or `--extra dev`, which
+# doesn't pull it in on its own; see Makefile/docs/mac-setup.md).
+aeris = "aeris.cli:main"
+
 [project.optional-dependencies]
 # aeris.vehicle / aeris.simulation transport & sim-adjacent deps (Phase 3+)
 sim = [
@@ -100,6 +106,13 @@ plugins = ["pydantic.mypy"]
 [[tool.mypy.overrides]]
 module = "aeris.core.*"
 strict = true
+
+[[tool.mypy.overrides]]
+# Neither ships py.typed / stubs. pymavlink's own types are dynamically
+# generated from the MAVLink XML dialect at install time anyway, so real
+# stubs aren't practical to add here.
+module = ["pymavlink.*", "mavsdk.*"]
+ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------
 # import-linter — dependency contracts per spec §14.3.

@@ -1,0 +1,4 @@
+# Base x500 quadrotor, no extra sensors. The default smoke-test profile —
+# `aeris sim up --profile headless_x500` (spec §51 Phase 3 expected output).
+extends: _base.yaml
+model: gz_x500

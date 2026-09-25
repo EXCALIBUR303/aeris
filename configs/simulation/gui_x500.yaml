@@ -1,0 +1,6 @@
+# Same as headless_x500 but with the Gazebo GUI — for interactive/manual
+# debugging only (requires XQuartz; not installed as of Phase 1, see
+# docs/mac-setup.md). Never used by automated evaluation.
+extends: _base.yaml
+model: gz_x500
+headless: false

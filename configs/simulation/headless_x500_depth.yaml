@@ -1,0 +1,4 @@
+# x500 with forward depth + RGB camera. Confirmed producing real headless
+# sensor data in Phase 1 (docs/phase_reports/phase-1.md).
+extends: _base.yaml
+model: gz_x500_depth

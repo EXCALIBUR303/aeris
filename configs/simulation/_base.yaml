@@ -1,0 +1,9 @@
+# Shared defaults for AERIS simulation launch profiles.
+# Not a profile on its own (no `model:`) — only ever used via `extends:`.
+world: default
+standalone: true
+headless: true
+speed_factor: 1.0
+gz_verbose: 1
+world_ready_timeout_s: 30.0
+heartbeat_timeout_s: 30.0

@@ -87,6 +87,14 @@ class SimulationTierMismatchError(SimulationError):
     """An operation was attempted against the wrong tier (H vs F)."""
 
 
+class Px4NotFoundError(SimulationError):
+    """The configured PX4 checkout doesn't exist or hasn't been built.
+
+    PX4 is an external, pinned dependency (spec §8.3, ADR-0002) — AERIS
+    never builds it automatically. See ``docs/mac-setup.md``.
+    """
+
+
 # --- Provenance / ground-truth separation (spec §17.4) -----------------------
 
 

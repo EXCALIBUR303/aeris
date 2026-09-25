@@ -1,0 +1,4 @@
+# x500 with a 2D LiDAR (Hokuyo-like, 270 deg). Confirmed producing real
+# headless scan data in Phase 1 (docs/phase_reports/phase-1.md).
+extends: _base.yaml
+model: gz_x500_lidar_2d
