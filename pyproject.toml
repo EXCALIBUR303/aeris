@@ -108,10 +108,13 @@ module = "aeris.core.*"
 strict = true
 
 [[tool.mypy.overrides]]
-# Neither ships py.typed / stubs. pymavlink's own types are dynamically
+# Doesn't ship py.typed / stubs. pymavlink's own types are dynamically
 # generated from the MAVLink XML dialect at install time anyway, so real
-# stubs aren't practical to add here.
-module = ["pymavlink.*", "mavsdk.*"]
+# stubs aren't practical to add here. (mavsdk itself isn't imported by
+# any aeris module post-ADR-0003 -- see aeris/vehicle/px4_mavlink/__init__.py
+# -- so it doesn't need an override here even though the "sim" extra still
+# installs it, for re-testing the segfault against future releases.)
+module = ["pymavlink.*"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------
@@ -133,24 +136,38 @@ modules = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "core.clock may depend on types/units/errors, not vice versa"
+name = "core.clock/frames may depend on types/units/errors, not vice versa"
 type = "layers"
 layers = [
-    "aeris.core.clock",
+    "aeris.core.clock | aeris.core.frames",
     "aeris.core.config",
     "aeris.core.logging",
     "aeris.core.types | aeris.core.units | aeris.core.errors",
 ]
 
+[[tool.importlinter.contracts]]
+name = "vehicle.interface stays transport-agnostic: no adapter, no NED/FRD conventions"
+type = "forbidden"
+source_modules = ["aeris.vehicle.interface"]
+forbidden_modules = [
+    "aeris.vehicle.px4_mavlink",
+    "aeris.core.frames.conventions",
+]
+
 # Contracts to be ADDED (not yet, since the packages don't exist):
-#   Phase 4:  "aeris.learning|aeris.autonomy|aeris.perception|aeris.mapping|
-#              aeris.localization must not import aeris.simulation.groundtruth"
-#             (forbidden contract)
-#   Phase 5:  "aeris.autonomy must not import any aeris.vehicle.px4_* adapter,
-#              only aeris.vehicle.interface" (forbidden contract)
-#   Phase 25: "aeris must not import backend or frontend" (forbidden contract)
-#   Phase 8:  "nothing under aeris/ imports gz.* except
-#              aeris.simulation.bridge._gz_process" (forbidden contract)
+#   Phase 7/8: "aeris.learning|aeris.autonomy|aeris.perception|aeris.mapping|
+#               aeris.localization must not import aeris.simulation.groundtruth"
+#              (forbidden contract)
+#   Phase 5:   "aeris.autonomy must not import any aeris.vehicle.px4_* adapter,
+#               only aeris.vehicle.interface" (forbidden contract)
+#   Phase 25:  "aeris must not import backend or frontend" (forbidden contract)
+#   Phase 8:   "nothing under aeris/ imports gz.* except
+#               aeris.simulation.bridge._gz_process" (forbidden contract)
+#   Phase 10+: "only aeris.vehicle.px4_mavlink (and later px4_mavsdk) may
+#               import aeris.core.frames.conventions" (forbidden contract,
+#               widened once autonomy/mapping/perception packages exist —
+#               today only vehicle.interface is checked against it above,
+#               since it's the only other package that could plausibly need it)
 
 # ---------------------------------------------------------------------------
 # pytest
