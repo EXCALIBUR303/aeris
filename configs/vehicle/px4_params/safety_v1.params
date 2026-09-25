@@ -1,0 +1,20 @@
+# AERIS Phase 5 safety params: PX4's own S0 geofence backstop (spec §16.2).
+#
+# Format: see sitl_base.params's header comment (same parser,
+# aeris.simulation.launcher.params.parse_params_file). Apply together with
+# sitl_base.params (merge both dicts before launcher.start(..., params=...))
+# -- this file is additive, not a replacement.
+#
+# PX4's own defaults (src/modules/navigator/geofence_params.c, read from
+# the pinned checkout in Phase 5) leave GF_MAX_HOR_DIST/GF_MAX_VER_DIST at
+# 0.0, which PX4 treats as "disabled" -- there is no S0 fence at all out of
+# the box. These values enable it as a real backstop, deliberately larger
+# than aeris.safety's own S1 envelope (configs/vehicle/safety.yaml's
+# geofence_radius_m=30/altitude_ceiling_m=20) so AERIS's own validator
+# trips first in normal operation; PX4's fence should only ever engage if
+# AERIS's own S1/S2 layers have already failed.
+#
+# GF_ACTION is left at PX4's own default (2, "Hold mode") -- not overridden
+# here, since it's already the right choice for a backstop.
+GF_MAX_HOR_DIST 60.0
+GF_MAX_VER_DIST 40.0

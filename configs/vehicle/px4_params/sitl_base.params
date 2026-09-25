@@ -18,10 +18,11 @@
 # src/modules/commander/commander_params.c, read directly from the pinned
 # checkout in Phase 3.
 #
-# NOTE: this is a plausible, not yet confirmed, lead on the arm-rejection
-# finding from Phase 1 (docs/phase_reports/phase-1.md) — Phase 1's MAVLink
-# arm attempt returned MAV_RESULT_TEMPORARILY_REJECTED for an undiagnosed
-# reason. Phase 5 (programmatic takeoff/flight/landing) owns diagnosing
-# that properly; this setting is applied here because it's independently
-# well-justified for AERIS's SITL setup either way.
+# UPDATE (Phase 4): the actual root cause of the Phase 1 arm-rejection
+# finding was diagnosed and fixed in Phase 4 — PX4's health_and_arming_checks
+# refuses to arm without a live GCS heartbeat on the link
+# ("No connection to the GCS"), and Px4MavlinkAdapter didn't send one. See
+# docs/phase_reports/phase-4.md and docs/vehicle.md. COM_RC_IN_MODE=4
+# below was not the fix, but is kept — it remains independently
+# well-justified for AERIS's RC-less, MAVLink-only SITL setup either way.
 COM_RC_IN_MODE 4

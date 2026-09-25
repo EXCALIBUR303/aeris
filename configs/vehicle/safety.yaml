@@ -1,0 +1,22 @@
+# AERIS — S1 flight envelope (spec §16.2), loaded by
+# aeris.safety.envelope.load_envelope into an Envelope.
+#
+# These are the "fly a box"-scoped Phase 5 defaults for a single gz_x500 in
+# a small SITL world — conservative on purpose (this is the first phase
+# that ever commands real setpoints). Later phases that need a larger
+# operating volume (mission phases, exploration) should extend this file
+# rather than loosen it in place.
+#
+# "Strictly inside PX4's [geofence]" (spec §16.2): geofence_radius_m and
+# altitude_ceiling_m here MUST be smaller than the GF_MAX_HOR_DIST /
+# GF_MAX_VER_DIST set in configs/vehicle/px4_params/safety_v1.params --
+# checked at startup by aeris.safety.envelope.assert_strictly_inside_px4_geofence,
+# not just asserted in this comment.
+
+v_xy_max_mps: 3.0
+vz_max_mps: 1.5
+yaw_rate_max_radps: 1.0        # ~57 deg/s
+accel_max_mps2: 2.0            # max implied accel between consecutive velocity setpoints
+altitude_floor_m: 0.3          # don't command a descent below this (doesn't gate takeoff/land themselves)
+altitude_ceiling_m: 20.0
+geofence_radius_m: 30.0        # horizontal distance from PX4-reported home

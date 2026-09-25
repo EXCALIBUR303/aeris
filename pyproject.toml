@@ -47,6 +47,7 @@ dev = [
     "ruff>=0.7",
     "mypy>=1.13",
     "pytest>=8.3",
+    "pytest-asyncio>=0.24",  # Phase 5+: aeris.safety and later async unit tests
     "pytest-cov>=6.0",
     "import-linter>=2.1",
     "pre-commit>=4.0",
@@ -104,7 +105,11 @@ no_implicit_optional = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = "aeris.core.*"
+# Spec §14.2: strict on aeris.core, aeris.vehicle, aeris.safety,
+# aeris.learning.ppo, aeris.evaluation (the last two don't exist yet).
+# aeris.vehicle was missed here in Phase 4 -- added now, both packages
+# confirmed to already pass --strict with no code changes needed.
+module = ["aeris.core.*", "aeris.vehicle.*", "aeris.safety.*"]
 strict = true
 
 [[tool.mypy.overrides]]
@@ -154,12 +159,23 @@ forbidden_modules = [
     "aeris.core.frames.conventions",
 ]
 
+[[tool.importlinter.contracts]]
+name = "safety stays transport-agnostic too: only vehicle.interface, no adapter"
+type = "forbidden"
+source_modules = ["aeris.safety"]
+forbidden_modules = [
+    "aeris.vehicle.px4_mavlink",
+    "aeris.core.frames.conventions",
+]
+
 # Contracts to be ADDED (not yet, since the packages don't exist):
 #   Phase 7/8: "aeris.learning|aeris.autonomy|aeris.perception|aeris.mapping|
 #               aeris.localization must not import aeris.simulation.groundtruth"
 #              (forbidden contract)
-#   Phase 5:   "aeris.autonomy must not import any aeris.vehicle.px4_* adapter,
-#               only aeris.vehicle.interface" (forbidden contract)
+#   Phase 6:   "aeris.autonomy must not import any aeris.vehicle.px4_* adapter,
+#               only aeris.vehicle.interface" (forbidden contract; the repo
+#               tree puts autonomy/mission at Phase 6, not 5 -- the "Phase 5"
+#               label on this line before Phase 5 itself existed was wrong)
 #   Phase 25:  "aeris must not import backend or frontend" (forbidden contract)
 #   Phase 8:   "nothing under aeris/ imports gz.* except
 #               aeris.simulation.bridge._gz_process" (forbidden contract)
@@ -182,3 +198,4 @@ markers = [
     "backend: FastAPI TestClient tests",
 ]
 addopts = "-ra --strict-markers"
+asyncio_mode = "auto"
