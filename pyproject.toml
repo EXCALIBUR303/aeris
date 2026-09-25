@@ -1,0 +1,154 @@
+[project]
+name = "aeris"
+version = "0.1.0"
+description = "AERIS — Autonomous Drone Intelligence Research Platform"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "Proprietary" }
+authors = [{ name = "Sid" }]
+
+# Core runtime dependencies (aeris.core; kept minimal — most functionality
+# lives behind the extras below, added by the phase that first needs it).
+dependencies = [
+    "pydantic>=2.9",
+    "pyyaml>=6.0",
+    "structlog>=24.4",
+]
+
+[project.optional-dependencies]
+# aeris.vehicle / aeris.simulation transport & sim-adjacent deps (Phase 3+)
+sim = [
+    "pymavlink>=2.4.50",
+    "mavsdk>=4.0.0",
+    "pyzmq>=26.2",
+    "msgpack>=1.1",
+]
+# aeris.learning deps (Phase 13+)
+learn = [
+    "torch>=2.14",
+    "numpy>=2.0",
+    "numba>=0.60",
+    "gymnasium>=1.0",
+]
+# backend/app deps (Phase 25+)
+server = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "websockets>=13.1",
+]
+# Everything needed to develop/test AERIS itself.
+dev = [
+    "ruff>=0.7",
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "import-linter>=2.1",
+    "pre-commit>=4.0",
+    "types-PyYAML>=6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["aeris"]
+
+[tool.uv]
+default-groups = []
+
+# ---------------------------------------------------------------------------
+# ruff — lint + format
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["aeris", "backend", "tests", "scripts"]
+# AERIS_TECHNICAL_SPEC.md and docs/ contain illustrative Python snippets in
+# fenced code blocks that are not meant to be reformatted as real source.
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",     # pycodestyle / pyflakes
+    "I",                # isort
+    "UP",               # pyupgrade
+    "B",                # bugbear
+    "SIM",              # simplify
+    "C4",               # comprehensions
+    "RUF",              # ruff-specific
+]
+ignore = [
+    "E501",  # line length handled by the formatter
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["aeris", "backend"]
+
+# ---------------------------------------------------------------------------
+# mypy — strict on the safety-critical/foundational packages per spec §14.2,
+# relaxed elsewhere until those packages exist and are typed.
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "aeris.core.*"
+strict = true
+
+# ---------------------------------------------------------------------------
+# import-linter — dependency contracts per spec §14.3.
+# Contracts reference only packages that exist today; each later phase adds
+# its own contract as it creates the corresponding package (see the
+# commented-out block below for what's coming and when).
+# ---------------------------------------------------------------------------
+[tool.importlinter]
+root_package = "aeris"
+
+[[tool.importlinter.contracts]]
+name = "core.errors and core.types are dependency-free within aeris.core"
+type = "independence"
+modules = [
+    "aeris.core.errors",
+    "aeris.core.types",
+    "aeris.core.units",
+]
+
+[[tool.importlinter.contracts]]
+name = "core.clock may depend on types/units/errors, not vice versa"
+type = "layers"
+layers = [
+    "aeris.core.clock",
+    "aeris.core.config",
+    "aeris.core.logging",
+    "aeris.core.types | aeris.core.units | aeris.core.errors",
+]
+
+# Contracts to be ADDED (not yet, since the packages don't exist):
+#   Phase 4:  "aeris.learning|aeris.autonomy|aeris.perception|aeris.mapping|
+#              aeris.localization must not import aeris.simulation.groundtruth"
+#             (forbidden contract)
+#   Phase 5:  "aeris.autonomy must not import any aeris.vehicle.px4_* adapter,
+#              only aeris.vehicle.interface" (forbidden contract)
+#   Phase 25: "aeris must not import backend or frontend" (forbidden contract)
+#   Phase 8:  "nothing under aeris/ imports gz.* except
+#              aeris.simulation.bridge._gz_process" (forbidden contract)
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "unit: fast, no external services (default CI tier)",
+    "sim: requires PX4 SITL + Gazebo running locally",
+    "integration: requires SITL + AERIS processes together",
+    "eval: long-running evaluation suites",
+    "backend: FastAPI TestClient tests",
+]
+addopts = "-ra --strict-markers"

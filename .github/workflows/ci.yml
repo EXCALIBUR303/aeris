@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: lint + typecheck + unit tests (import contracts included)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.12"
+
+      - name: Sync dependencies
+        run: uv sync --extra dev
+
+      - name: ruff check
+        run: uv run ruff check .
+
+      - name: ruff format --check
+        run: uv run ruff format --check .
+
+      - name: mypy (aeris.core)
+        run: uv run mypy aeris
+
+      - name: import-linter (real contracts + fixture-violation detection)
+        run: uv run lint-imports
+
+      - name: pytest (unit — SMOKE tier only; no SITL/Gazebo in hosted CI)
+        run: uv run pytest tests/unit -v --cov=aeris --cov-report=term-missing
+
+  # SITL/Gazebo tests are NOT run in hosted CI (spec §44.2): they need PX4
+  # SITL + Gazebo Harmonic installed per docs/mac-setup.md, which hosted
+  # runners don't have. Those are recorded manually in phase reports with
+  # logs, and may get a self-hosted or Linux-container CI job later
+  # (spec §44.2, "Option B1 parity").

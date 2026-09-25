@@ -1,0 +1,15 @@
+--- a/src/modules/simulation/gz_plugins/optical_flow/OpticalFlowSensor.hpp
++++ b/src/modules/simulation/gz_plugins/optical_flow/OpticalFlowSensor.hpp
+@@ -64,8 +64,10 @@
+ 	int _integration_time_us;
+
+ 	// Camera
+-	double _horizontal_fov {0.0};
+-	double _vertical_fov {0.0};
++	// AERIS macOS compatibility patch: neither field is read elsewhere in this
++	// class; -Wunused-private-field (-Werror) fails the build without this.
++	[[maybe_unused]] double _horizontal_fov {0.0};
++	[[maybe_unused]] double _vertical_fov {0.0};
+
+ 	cv::Mat _last_image_gray;
+ 	uint32_t _last_image_timestamp {0};

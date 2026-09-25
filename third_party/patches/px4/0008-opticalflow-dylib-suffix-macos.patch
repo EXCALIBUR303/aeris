@@ -1,0 +1,30 @@
+--- a/src/modules/simulation/gz_plugins/optical_flow/optical_flow.cmake
++++ b/src/modules/simulation/gz_plugins/optical_flow/optical_flow.cmake
+@@ -35,13 +35,19 @@
+ find_package(OpenCV REQUIRED)
+
+ if(NOT TARGET OpticalFlow)
++    # AERIS macOS compatibility patch: the byproduct/library paths below were
++    # hardcoded to the ".so" (ELF) shared-library suffix. CMake's own build of
++    # this same external project correctly produces libOpticalFlow.dylib on
++    # Darwin; only these two hardcoded paths did not match. Using
++    # CMAKE_SHARED_LIBRARY_SUFFIX makes this portable (".so" on Linux,
++    # ".dylib" on macOS) without changing Linux/CI behavior. See docs/compat/.
+     ExternalProject_Add(OpticalFlow
+         GIT_REPOSITORY https://github.com/PX4/PX4-OpticalFlow.git
+         GIT_TAG master
+         PREFIX ${CMAKE_BINARY_DIR}/OpticalFlow
+         INSTALL_DIR ${CMAKE_BINARY_DIR}/OpticalFlow/install
+         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+-        BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/OpticalFlow/install/lib/libOpticalFlow.so
++        BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/OpticalFlow/install/lib/libOpticalFlow${CMAKE_SHARED_LIBRARY_SUFFIX}
+         UPDATE_DISCONNECTED ON
+         BUILD_ALWAYS OFF
+         STEP_TARGETS build
+@@ -49,5 +55,5 @@
+
+     ExternalProject_Get_Property(OpticalFlow install_dir)
+     set(OpticalFlow_INCLUDE_DIRS ${install_dir}/include CACHE INTERNAL "")
+-    set(OpticalFlow_LIBS ${install_dir}/lib/libOpticalFlow.so CACHE INTERNAL "")
++    set(OpticalFlow_LIBS ${install_dir}/lib/libOpticalFlow${CMAKE_SHARED_LIBRARY_SUFFIX} CACHE INTERNAL "")
+ endif()

@@ -1,0 +1,26 @@
+--- a/src/modules/simulation/gz_msgs/CMakeLists.txt
++++ b/src/modules/simulation/gz_msgs/CMakeLists.txt
+@@ -18,9 +18,23 @@
+         ${PROTO_HDRS}
+     )
+
++    # AERIS macOS compatibility patch: modern protobuf (>=26) pulls in Abseil
++    # headers that hard-error below C++17 ("C++ versions less than C++17 are
++    # not supported."). This target had no explicit standard and inherited
++    # the older project-wide default (gnu++14). See docs/compat/ for details.
++    target_compile_features(px4_gz_msgs PUBLIC cxx_std_17)
++
+     target_include_directories(px4_gz_msgs
+         PUBLIC
+             ${CMAKE_CURRENT_BINARY_DIR}
++    )
++    # AERIS macOS compatibility patch: mark Protobuf's own include dir (and
++    # transitively, Abseil's) as SYSTEM so -Werror -Wdouble-promotion does not
++    # fail on warnings raised inside their headers (e.g. absl/strings/str_cat.h),
++    # matching how the other gz_plugins targets already treat their gz/Qt
++    # includes via -isystem. See docs/compat/ for details.
++    target_include_directories(px4_gz_msgs
++        SYSTEM PUBLIC
+             ${Protobuf_INCLUDE_DIRS}
+     )
+     target_link_libraries(px4_gz_msgs PUBLIC ${PROTOBUF_LIBRARIES})

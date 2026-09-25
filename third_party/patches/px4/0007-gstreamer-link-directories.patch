@@ -1,0 +1,20 @@
+--- a/src/modules/simulation/gz_plugins/gstreamer/CMakeLists.txt
++++ b/src/modules/simulation/gz_plugins/gstreamer/CMakeLists.txt
+@@ -45,6 +45,17 @@
+         GstCameraSystem.cpp
+     )
+
++    # AERIS macOS compatibility patch: pkg_check_modules() populates
++    # <PREFIX>_LIBRARY_DIRS separately from <PREFIX>_LIBRARIES (bare -l names,
++    # no path), and this file previously only consumed the latter. That is a
++    # no-op on systems where GStreamer already sits on the default linker
++    # search path; on Homebrew macOS it is not, and the linker fails with
++    # "library 'gstreamer-1.0' not found". See docs/compat/ for details.
++    target_link_directories(${PROJECT_NAME}
++        PUBLIC ${GSTREAMER_LIBRARY_DIRS}
++        PUBLIC ${GSTREAMER_APP_LIBRARY_DIRS}
++    )
++
+     target_link_libraries(${PROJECT_NAME}
+         PUBLIC px4_gz_msgs
+         PUBLIC ${GZ_SENSORS_TARGET}

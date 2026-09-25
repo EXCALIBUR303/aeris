@@ -1,0 +1,177 @@
+# AERIS — Known-good version lock (Phase 1)
+#
+# Frozen after the Phase 1 Mac/PX4/Gazebo compatibility spike on the recorded
+# machine (Appendix A of AERIS_TECHNICAL_SPEC.md). Re-verify before trusting
+# on a different machine or after any `brew upgrade`.
+#
+# generated: 2026-09-25 (Phase 1)
+
+machine:
+  model: "MacBook Air (Mac17,3)"
+  chip: "Apple M5"
+  ram_gb: 16
+  macos_version: "27.2 (26B5091g)"
+  arch: arm64
+  homebrew_version: "7.0.6"
+
+px4:
+  repo: "https://github.com/PX4/PX4-Autopilot.git"
+  location: "~/aeris-deps/PX4-Autopilot"   # AERIS_PX4_DIR (external, not vendored)
+  tag: "v1.17.0"
+  commit: "d6f12ad1c4f70ad3230afd7d86e971421e02fef4"
+  # IMPORTANT: Tools/setup/macos.sh AS SHIPPED IN THE v1.17.0 TAG IS STALE —
+  # it calls the now-deprecated no-op `px4-dev`/`px4-sim` Homebrew meta-formulae
+  # and does not handle Homebrew 6.0+'s tap-trust requirement. AERIS Phase 1
+  # replaced Tools/setup/{macos.sh,gz-tap-pin.txt,protobuf-pin.txt,requirements.txt}
+  # with the versions from origin/main @ 253479bbebe834ace3ef9fff3a9ad603f120bd67
+  # (originals preserved at Tools/setup/_v1.17.0_original/). This changes only
+  # the *dependency installer script*, not PX4 source/firmware behavior.
+  setup_script_source: "origin/main"
+  setup_script_source_sha: "253479bbebe834ace3ef9fff3a9ad603f120bd67"
+  venv: ".venv"                 # PX4's own build venv, created by macos.sh; Python 3.14 (system default). AERIS never imports from it.
+
+homebrew_taps:
+  - "osx-cross/arm"
+  - "PX4/px4"
+  - "osrf/simulation"           # pinned to gz-tap-pin.txt commit: 9403d12a474c239604243c77751fa53ad95ba16f
+  - "local/protobufpin"         # AERIS-created throwaway tap (Phase 1 workaround, see protobuf entry below)
+
+toolchain:
+  cmake: "4.4.3"
+  ninja: "1.13.2"
+  arm-gcc-bin@13: "13.2.rel1"
+  fastdds: "2.0.2"
+  genromfs: "0.5.2"
+  kconfig-frontends: "3.7.0.0"
+  flock: "0.4.0"
+
+simulation:
+  gazebo_meta_formula: "gz-harmonic 1.0.0_5"
+  gz_sim: "8.15.0"
+  gz_transport: "13.6.0"
+  gz_sensors: "8.2.2"
+  gz_physics: "7.8.0"
+  gz_msgs: "10.4.0"
+  gz_gui: "8.4.0"
+  sdformat: "14.9.0"
+  gz_tap_pin_commit: "9403d12a474c239604243c77751fa53ad95ba16f"
+  render_engine_default: "ogre2"   # CONFIRMED WORKING headless on this Mac — no PX4_GZ_SIM_RENDER_ENGINE=ogre(1) workaround needed
+  headless_rendering_sensor_gate:  # spec §9.4 — the single highest-impact Phase 1 risk
+    status: "PASS (native, no fallback needed)"
+    gz_x500_depth:
+      depth_camera: "PASS — /depth_camera publishes real depth frames headless (ogre2)"
+      rgb_camera: "PASS — IMX214 /image publishes real RGB frames headless"
+    gz_x500_lidar_2d:
+      lidar_2d_v2_scan: "PASS — real scans with incrementing seq (verified seq:1898 after ~66s runtime)"
+    note: >
+      The base gz_x500 and gz_x500_depth models also declare two OTHER lidar
+      links (lidar_sensor_link/sensor/lidar and link/sensor/lidar_2d_v2) that
+      are silent (never publish) under both models tested — likely a
+      not-triggered/disabled sensor in that particular SDF composition, NOT a
+      rendering-engine failure, since the dedicated gz_x500_lidar_2d model's
+      identically-named lidar_2d_v2/scan topic publishes correctly. Not
+      investigated further in Phase 1; revisit in Phase 8 if the AERIS
+      sensor set needs a model other than gz_x500_lidar_2d/gz_x500_depth.
+
+dependencies:
+  protobuf:
+    version: "36.1"
+    note: >
+      Pinned exactly (not 36.2, the plain `brew install`/upgrade default) —
+      gz-sim8's bottled .dylib is linked against libprotobuf.36.1.0.dylib by
+      SONAME, so `gz sim` fails to even load with any other protobuf minor.
+      Installed via a throwaway local Homebrew tap (`local/protobufpin`) built
+      from the exact homebrew-core formula at commit
+      88d598cf1d2dba7063fbc29d441d072963481123, because this Homebrew
+      installation does not have a local homebrew-core clone (API-only mode),
+      which is what main's macos.sh --sim-tools normally requires to apply
+      Tools/setup/protobuf-pin.txt automatically.
+  opencv@4:
+    version: "4.14.0_10"
+    keg_only: true
+    note: "Required on CMAKE_PREFIX_PATH / PKG_CONFIG_PATH explicitly — not symlinked into /opt/homebrew by design."
+  qt@5:
+    version: "5.15.19"
+    keg_only: true
+    deprecated_upstream: "2027-05-19"
+    note: "Required for gz-gui8. Also required on CMAKE_PREFIX_PATH explicitly."
+  gstreamer:
+    version: "1.28.7_1"
+    keg_only: false
+    note: "Not keg-only, but PX4's GstCameraSystem CMakeLists.txt only linked GSTREAMER_LIBRARIES (bare -l names) without GSTREAMER_LIBRARY_DIRS — patched, see patches/0003."
+
+mavsdk_python:
+  package: "mavsdk"              # "mavsdk-grpc" DOES also exist on PyPI (the old gRPC-based API, pin mavsdk<4 semantics) — corrects a Phase-0 research guess that it didn't exist
+  version: "4.0.0"
+  architecture_note: >
+    MAVSDK-Python 4.0.0 ships a native ctypes-loaded libcmavsdk.dylib
+    (arm64 Mach-O) instead of the older gRPC + separate `mavsdk_server`
+    subprocess model. There is no mavsdk_server process to launch or manage.
+    API also changed: `System()` is no longer directly constructible; get it
+    from `mavsdk.asyncio.Mavsdk(Configuration(...)).first_autopilot()`.
+  python_tested: "3.12.12"
+  status: >
+    BROKEN on this machine (Sep 2026): `mavsdk.asyncio.Mavsdk(Configuration(...))`
+    segfaults (SIGSEGV) immediately on construction — reproduced 3x, isolated to
+    that exact call (Configuration() alone is fine). No Python-level workaround
+    found in the time available. PX4 SITL itself is NOT at fault: pymavlink
+    against the same running instance works perfectly (heartbeat, EKF status,
+    GLOBAL_POSITION_INT, arm/command ACKs all received correctly). AERIS Phase 4
+    should re-test against a newer mavsdk point release before committing to
+    it as the primary adapter (ADR-003); pymavlink is the validated fallback
+    and may need to be promoted to primary if this persists.
+  crash_repro: |
+    python -c "from mavsdk.asyncio import Mavsdk, Configuration, ComponentType; \
+    Mavsdk(Configuration(ComponentType.GROUND_STATION))"  # -> SIGSEGV, exit 139
+
+pymavlink:
+  version: "2.4.50"
+  status: "WORKING — validated against running PX4 SITL: heartbeat, GLOBAL_POSITION_INT, ESTIMATOR_STATUS, SYS_STATUS, COMMAND_ACK all received correctly."
+  note: >
+    First MAV_CMD_COMPONENT_ARM_DISARM attempt(s) against gz_x500_lidar_2d
+    returned COMMAND_ACK result=1 (MAV_RESULT_TEMPORARILY_REJECTED); no
+    STATUSTEXT reason captured in the time available. EKF/estimator status
+    was healthy (pos_horiz_accuracy ~0.15 m) at the time of the attempt, so
+    this is not an obvious EKF-convergence issue. Left as a named, bounded
+    follow-up for Phase 5 (which builds the proper preflight-wait + arming
+    state machine and runs 20 repeated takeoff/land cycles) rather than
+    debugged further in Phase 1.
+
+pytorch:
+  version: "2.14.0"
+  python_tested: "3.12.12"
+  mps_built: true
+  mps_available: true
+  mps_numerically_correct: true   # verified vs CPU on a matmul, atol=1e-2
+  cpu_faster_than_mps_at: "2000x2000 matmul (20 iters): cpu 0.198s vs mps 0.298s"
+  backend_policy: "CPU default for small RL nets per spec §7.2; MPS considered per-workload after benchmarking (confirmed by this data point)."
+
+qgroundcontrol:
+  status: "NOT installed — deferred (Gazebo GUI/QGC are debug-only tools, not on the Phase 1 headless critical path; user can install the 5.x DMG manually, see phase-1 report)."
+
+xquartz:
+  status: "NOT installed — brew cask install requires an interactive sudo password prompt, which the agent cannot supply. User action required (see phase-1 report)."
+  blocks: "Gazebo GUI only. Headless server mode (the Phase 1 gate) does not need it."
+
+known_source_patches:
+  location: "third_party/patches/px4/"
+  count: 9
+  files:
+    - 0001-fix-double-promotion-moving-platform-controller.patch
+    - 0002-gz-msgs-require-cxx17-for-modern-protobuf.patch
+    - 0004a-fix-double-promotion-servo.patch
+    - 0004b-fix-double-promotion-gimbal.patch
+    - 0005a-fix-deprecated-resize-wheel.patch
+    - 0005b-fix-deprecated-resize-esc.patch
+    - 0006-fix-unused-private-fov-fields.patch
+    - 0007-gstreamer-link-directories.patch
+    - 0008-opticalflow-dylib-suffix-macos.patch
+  applied_against: "PX4-Autopilot v1.17.0 tag (commit d6f12ad1c4f70ad3230afd7d86e971421e02fef4)"
+  manual_workaround_not_yet_patched_as_file: >
+    protobuf 36.1/36.2 dual-dylib coexistence (see protobuf entry above) was
+    done by direct Cellar file manipulation (extract+install_name_tool+codesign),
+    not a PX4 source patch — there is nothing in the PX4 tree to patch for it.
+    This is Homebrew/environment state, not part of the PX4 git history, and
+    is NOT reproduced by `git apply` on a fresh clone. A future phase should
+    either script this workaround or find a cleaner fix (e.g. building
+    OpticalFlow/opencv against a single consistent protobuf).

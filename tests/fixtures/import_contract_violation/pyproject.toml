@@ -1,0 +1,7 @@
+[tool.importlinter]
+root_package = "broken"
+
+[[tool.importlinter.contracts]]
+name = "errors and types must be independent (deliberately violated fixture)"
+type = "independence"
+modules = ["broken.errors", "broken.types"]

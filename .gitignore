@@ -1,0 +1,65 @@
+# AERIS .gitignore
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+venv/
+*.whl
+
+# --- uv / dependency locks we DO want tracked ---
+# uv.lock is intentionally tracked (reproducibility). Do not ignore it.
+
+# --- Node / frontend ---
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+npm-debug.log*
+
+# --- AERIS local/generated data (never committed; see spec §57) ---
+# (results/*, not results/ — a bare "results/" would also swallow the
+# negation below, since git won't re-include a file inside an excluded dir.)
+results/*
+models/*
+replays/*
+!results/.gitkeep
+!models/.gitkeep
+!replays/.gitkeep
+
+# --- Local-only config (per-machine paths; see configs/local.example.yaml) ---
+configs/local.yaml
+
+# --- PX4 / Gazebo (external deps, build artifacts, logs) ---
+# PX4-Autopilot itself lives outside this repo (AERIS_PX4_DIR), but guard
+# against it ever being nested inside by accident.
+PX4-Autopilot/
+*.ulg
+*.ulog
+gz-*.log
+.gz/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Editors ---
+.vscode/
+.idea/
+*.swp
+
+# --- Secrets ---
+.env
+.env.local
+*.pem
+*.key

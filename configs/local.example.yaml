@@ -1,0 +1,15 @@
+# AERIS — per-machine local configuration.
+#
+# Copy this file to `configs/local.yaml` (gitignored — never commit machine-
+# specific paths) and fill in values for this machine. Loaded by
+# aeris.core.config once aeris.simulation.launcher (Phase 3) reads it.
+
+# Where PX4-Autopilot is checked out on this machine (spec §8.3, ADR-002).
+# PX4 is an external, pinned dependency — never inside this repo.
+px4_dir: "~/aeris-deps/PX4-Autopilot"
+
+# Device policy override for PyTorch (Phase 13+). "cpu" is the spec default
+# for small RL nets (§7.2); set "mps" only after benchmarking your own
+# workload, per the Phase 1 finding that CPU beat MPS on this machine's
+# matmul benchmark.
+torch_device: "cpu"

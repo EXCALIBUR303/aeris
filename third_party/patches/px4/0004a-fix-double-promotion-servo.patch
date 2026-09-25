@@ -1,0 +1,13 @@
+--- a/src/modules/simulation/gz_bridge/GZMixingInterfaceServo.cpp
++++ b/src/modules/simulation/gz_bridge/GZMixingInterfaceServo.cpp
+@@ -117,8 +117,8 @@
+ 			return false;
+ 		}
+
+-		double min_val = get_servo_angle_min(i);
+-		double max_val = get_servo_angle_max(i);
++		double min_val = static_cast<double>(get_servo_angle_min(i));
++		double max_val = static_cast<double>(get_servo_angle_max(i));
+ 		_angle_min_rad.push_back(min_val);
+ 		_angular_range_rad.push_back(max_val - min_val);
+ 	}
