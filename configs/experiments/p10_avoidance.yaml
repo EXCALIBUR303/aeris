@@ -1,0 +1,50 @@
+# AERIS Phase 10's first formal experiment (spec §51 Phase 10).
+#
+# The declared matrix: obstacle suite x method x run. Spec's validation
+# gate asks for >=5 scenarios x 10 runs; this run used the reduced n_runs
+# below for the live time budget of one phase (documented in
+# docs/phase_reports/phase-10.md) -- full scenario *breadth* is kept (all
+# 5 suites), only run *depth* is reduced, matching the Phase 8/9 precedent
+# of honest, documented scope reduction rather than a narrower gate.
+
+experiment_id: p10_avoidance
+scenarios:
+  - corridor
+  - pillar_forest
+  - dead_end
+  - narrow_gap
+  - overhang_within_band
+
+methods:
+  - reactive       # ReactiveAvoidance (VFH-style) + CollisionShield
+  - straight_line  # PathFollower (no obstacle awareness) + CollisionShield only
+
+n_runs: 5
+
+takeoff_altitude_m: 1.0
+cruise_speed_mps: 1.0
+episode_timeout_s: 45.0
+
+shield:
+  a_brake_mps2: 2.0
+  d_safe_m: 0.5
+  tau_s: 0.3
+  max_range_m: 15.0
+  fov_half_angle_rad: 0.637
+
+# Per-scenario goal, in ODOM frame -- i.e. relative to that scenario's own
+# spawn point, NOT the WorldSpec's world-frame coordinates. PX4's EKF
+# local-position origin is set at/near the arm position, not the gz world
+# origin: confirmed live (Phase 10) by recording the actual pose_odom
+# trace for a spawn_pose=(-7,0,0.1) world -- pose_odom started at
+# ~(0,0,0.66), not ~(-7,0,~1). Every earlier phase's flights happened to
+# spawn at/near world (0,0,0), which is why this distinction never showed
+# up before Phase 10 was the first to use a custom, non-origin spawn_pose.
+# x/y here = (world_goal_x - world_spawn_x, world_goal_y - world_spawn_y);
+# z is the desired cruise altitude directly (spawn z is ~0 in every suite).
+goals:
+  corridor: [13.5, 0.0, 1.0]  # world target ~6.5, spawn world x=-7.0
+  pillar_forest: [10.0, 0.0, 1.0]  # world target ~4.5, spawn world x=-5.5
+  dead_end: [6.5, 0.0, 1.0]  # world target ~3.0 (short of the end wall by design -- spec §51 P10: no exploration logic exists to "solve" a true dead end), spawn world x=-3.5
+  narrow_gap: [8.0, 0.0, 1.0]  # world target ~4.0, spawn world x=-4.0
+  overhang_within_band: [9.0, 0.0, 1.0]  # world target ~4.0, spawn world x=-5.0

@@ -33,25 +33,25 @@
     </model>
     <model name="aeris_box_0">
       <static>true</static>
-      <pose>-1.7249999999999999 0.0 1.25 0.0 0.0 0.0</pose>
+      <pose>0.0 -1.7249999999999999 1.25 0.0 0.0 0.0</pose>
       <link name="link">
         <collision name="collision">
-          <geometry><box><size>2.55 0.15 2.5</size></box></geometry>
+          <geometry><box><size>0.15 2.55 2.5</size></box></geometry>
         </collision>
         <visual name="visual">
-          <geometry><box><size>2.55 0.15 2.5</size></box></geometry>
+          <geometry><box><size>0.15 2.55 2.5</size></box></geometry>
         </visual>
       </link>
     </model>
     <model name="aeris_box_1">
       <static>true</static>
-      <pose>1.7249999999999999 0.0 1.25 0.0 0.0 0.0</pose>
+      <pose>0.0 1.7249999999999999 1.25 0.0 0.0 0.0</pose>
       <link name="link">
         <collision name="collision">
-          <geometry><box><size>2.55 0.15 2.5</size></box></geometry>
+          <geometry><box><size>0.15 2.55 2.5</size></box></geometry>
         </collision>
         <visual name="visual">
-          <geometry><box><size>2.55 0.15 2.5</size></box></geometry>
+          <geometry><box><size>0.15 2.55 2.5</size></box></geometry>
         </visual>
       </link>
     </model>

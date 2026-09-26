@@ -11,6 +11,8 @@ convenience rather than a real generalization claim.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from aeris.simulation.worlds.spec import (
     Bounds,
     Box,
@@ -150,32 +152,40 @@ def dead_end(*, length_m: float = 8.0, width_m: float = 2.0) -> WorldSpec:
 
 
 def narrow_gap(*, gap_width_m: float = 0.9, wall_span_m: float = 6.0) -> WorldSpec:
-    """Two wall segments with a single narrow gap between them, barely wider than the vehicle."""
+    """A single wall crossing the vehicle's direction of travel (thin in X,
+    spanning Y), with a narrow Y-gap barely wider than the vehicle.
+
+    A first version had this backwards -- thin in Y (the direction that's
+    supposed to be blocked) and long in X (the direction of travel) --
+    confirmed live (Phase 10) to let the vehicle simply detour around the
+    "wall" laterally, in open space past its short Y-extent, never
+    actually being forced through the gap at all.
+    """
     half_gap = gap_width_m / 2.0
     seg_len = (wall_span_m - gap_width_m) / 2.0
     walls = (
         Box(
-            x=-half_gap - seg_len / 2.0,
-            y=0.0,
+            x=0.0,
+            y=-half_gap - seg_len / 2.0,
             z=_WALL_HEIGHT_M / 2.0,
-            size_x=seg_len,
-            size_y=_WALL_THICKNESS_M,
+            size_x=_WALL_THICKNESS_M,
+            size_y=seg_len,
             size_z=_WALL_HEIGHT_M,
         ),
         Box(
-            x=half_gap + seg_len / 2.0,
-            y=0.0,
+            x=0.0,
+            y=half_gap + seg_len / 2.0,
             z=_WALL_HEIGHT_M / 2.0,
-            size_x=seg_len,
-            size_y=_WALL_THICKNESS_M,
+            size_x=_WALL_THICKNESS_M,
+            size_y=seg_len,
             size_z=_WALL_HEIGHT_M,
         ),
     )
     bounds = Bounds(
         min_x=-wall_span_m / 2.0 - 2.0,
-        min_y=-3.0,
+        min_y=-wall_span_m / 2.0,
         max_x=wall_span_m / 2.0 + 2.0,
-        max_y=3.0,
+        max_y=wall_span_m / 2.0,
         max_z=_WALL_HEIGHT_M + 1.0,
     )
     return WorldSpec(
@@ -207,7 +217,7 @@ def overhang_within_band(
     )
 
 
-ALL_SUITES = {
+ALL_SUITES: dict[str, Callable[[], WorldSpec]] = {
     "corridor": corridor,
     "pillar_forest": pillar_forest,
     "dead_end": dead_end,

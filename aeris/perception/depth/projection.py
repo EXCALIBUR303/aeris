@@ -46,6 +46,7 @@ def depth_to_points_camera(
     *,
     min_depth_m: float = 0.05,
     max_depth_m: float = 100.0,
+    stride: int = 1,
 ) -> list[Vec3]:
     """Back-project a flat, row-major depth buffer into camera-optical-frame points.
 
@@ -53,15 +54,28 @@ def depth_to_points_camera(
     range) distance at that pixel, matching gz's ``depth_camera`` sensor
     convention. NaN/inf samples and samples outside
     ``[min_depth_m, max_depth_m]`` (no-return / clipped) are dropped.
+
+    ``stride`` samples every ``stride``-th pixel in each dimension instead
+    of all of them (default 1: every pixel, unchanged from the original
+    behavior). A real-time control loop (e.g. the S3 shield's sector
+    binning, spec §16.4) only needs on the order of hundreds of points to
+    populate 72 angular sectors, not a full 640x480 (307,200-point) cloud
+    -- confirmed live (Phase 10) that back-projecting every pixel every
+    control tick in pure Python is slow enough (multiple seconds) to blow
+    the intended 10 Hz loop rate out to well under 1 Hz, which visibly
+    destabilized the vertical velocity control into a growing oscillation
+    (the loop was always reacting to a stale, multi-second-old position).
     """
     width, height = intrinsics.width, intrinsics.height
     if len(depth) != width * height:
         raise ValueError(f"depth buffer has {len(depth)} samples, expected {width * height}")
+    if stride < 1:
+        raise ValueError(f"stride must be >= 1, got {stride}")
 
     points: list[Vec3] = []
-    for row in range(height):
+    for row in range(0, height, stride):
         row_offset = row * width
-        for col in range(width):
+        for col in range(0, width, stride):
             z = depth[row_offset + col]
             if math.isnan(z) or math.isinf(z):
                 continue

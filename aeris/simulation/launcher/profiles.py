@@ -28,7 +28,15 @@ class SimulationProfile(BaseModel):
     documented in spec §9.1 and verified against the pinned PX4 checkout in
     Phase 3 (``ROMFS/px4fmu_common/init.d-posix/px4-rc.gzsim``):
 
-    - ``world`` -> the ``.sdf`` file under ``Tools/simulation/gz/worlds/``.
+    - ``world`` -> the ``.sdf`` file under ``Tools/simulation/gz/worlds/``,
+      *unless* ``world_sdf_path`` is set (Phase 9/10: a WorldSpec-rendered
+      world file living anywhere, e.g. ``results/worlds/...`` or a tmp
+      dir) — that path is used directly instead, so a generated or
+      obstacle-suite world never needs to be copied into the pinned PX4
+      checkout. ``world`` should then match that file's own ``<world
+      name="...">`` (``aeris.simulation.worlds.sdf.render`` names it after
+      the ``WorldSpec.name``) so readiness checks/``GroundTruthService``
+      still resolve the right gz topics.
     - ``model`` -> ``PX4_SIM_MODEL`` (must start with ``gz_``; PX4 matches
       this against an ``airframes/<id>_<model>`` file to pick the autostart
       airframe — AERIS never sets ``PX4_SYS_AUTOSTART`` directly).
@@ -49,6 +57,7 @@ class SimulationProfile(BaseModel):
 
     name: str
     world: str = "default"
+    world_sdf_path: Path | None = None
     model: str
     instance: int = Field(default=0, ge=0)
     spawn_pose: Pose6 | None = None

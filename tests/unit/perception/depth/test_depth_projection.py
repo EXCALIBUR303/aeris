@@ -77,6 +77,26 @@ def test_wrong_buffer_length_raises() -> None:
         depth_to_points_camera(depth, _INTRINSICS)
 
 
+def test_stride_samples_a_subset_of_pixels() -> None:
+    depth_m = 4.0
+    depth = array("f", [depth_m] * (_WIDTH * _HEIGHT))
+
+    full = depth_to_points_camera(depth, _INTRINSICS, stride=1)
+    strided = depth_to_points_camera(depth, _INTRINSICS, stride=2)
+
+    # rows 0,2,4 x cols 0,2,4,6 = 3*4 = 12 points, vs the full 8*6=48.
+    assert len(strided) == 12
+    assert len(full) == _WIDTH * _HEIGHT
+    for p in strided:
+        assert p.z == pytest.approx(depth_m)
+
+
+def test_stride_rejects_non_positive_value() -> None:
+    depth = array("f", [1.0] * (_WIDTH * _HEIGHT))
+    with pytest.raises(ValueError, match="stride"):
+        depth_to_points_camera(depth, _INTRINSICS, stride=0)
+
+
 def test_camera_intrinsics_from_k_matrix() -> None:
     k = (615.0, 0.0, 320.0, 0.0, 615.0, 240.0, 0.0, 0.0, 1.0)
     intrinsics = camera_intrinsics_from_k(640, 480, k)

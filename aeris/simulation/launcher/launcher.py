@@ -204,7 +204,7 @@ class SimulationLauncher:
         return env
 
     def _start_gazebo(self, profile: SimulationProfile) -> int:
-        world_sdf = self._layout.world_sdf(profile.world)
+        world_sdf = profile.world_sdf_path or self._layout.world_sdf(profile.world)
         if not world_sdf.is_file():
             raise SimulationLaunchError(f"world file not found: {world_sdf}")
 

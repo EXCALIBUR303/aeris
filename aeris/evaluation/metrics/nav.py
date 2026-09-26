@@ -44,6 +44,23 @@ def mean_waypoint_error_m(errors_m: Sequence[float]) -> float:
     return sum(errors_m) / len(errors_m)
 
 
+def path_efficiency(*, shortest_path_m: float, distance_travelled_m: float) -> float:
+    """eta = l*/D (spec §41, table row "Path efficiency"), <= 1.
+
+    Spec's own ``l*`` is "the shortest collision-free path length (A* on
+    GT map, inflated)" -- A* doesn't exist until Phase 12, so Phase 10
+    callers pass the straight-line spawn-to-goal distance as a documented
+    stand-in (exact when the direct line is itself obstacle-free, an
+    underestimate otherwise -- underestimating l* only ever *lowers* the
+    reported eta, never overstates efficiency).
+    """
+    if shortest_path_m < 0:
+        raise ValueError(f"shortest_path_m must be >= 0, got {shortest_path_m}")
+    if distance_travelled_m <= 0:
+        return 0.0
+    return shortest_path_m / distance_travelled_m
+
+
 def return_to_base_success(
     *,
     landed: bool,
