@@ -16,7 +16,12 @@ import sys
 import time
 from pathlib import Path
 
+from aeris.autonomy.mission.executive import MissionExecutive
+from aeris.autonomy.mission.spec import load_mission_spec
+from aeris.core.clock import WallClock
 from aeris.core.logging import configure_logging, get_logger
+from aeris.safety.envelope import load_envelope
+from aeris.safety.supervisor import SafetySupervisor
 from aeris.simulation.launcher.launcher import SimulationLauncher
 from aeris.simulation.launcher.params import parse_params_file
 from aeris.simulation.launcher.profiles import load_profile
@@ -25,8 +30,10 @@ from aeris.simulation.px4_paths import resolve_px4_layout
 from aeris.vehicle.interface import VehicleEndpoint
 from aeris.vehicle.px4_mavlink.adapter import Px4MavlinkAdapter
 
-_PROFILES_DIR = Path(__file__).resolve().parents[1] / "configs" / "simulation"
-_PARAMS_DIR = Path(__file__).resolve().parents[1] / "configs" / "vehicle" / "px4_params"
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_PROFILES_DIR = _REPO_ROOT / "configs" / "simulation"
+_PARAMS_DIR = _REPO_ROOT / "configs" / "vehicle" / "px4_params"
+_DEFAULT_SAFETY_YAML = _REPO_ROOT / "configs" / "vehicle" / "safety.yaml"
 
 _logger = get_logger(component="cli")
 
@@ -134,6 +141,31 @@ def _cmd_vehicle_monitor(args: argparse.Namespace) -> int:
     return asyncio.run(run())
 
 
+def _cmd_mission_run(args: argparse.Namespace) -> int:
+    spec = load_mission_spec(args.mission_path)
+    envelope = load_envelope(args.safety_config)
+
+    async def run() -> int:
+        adapter = Px4MavlinkAdapter()
+        supervisor = SafetySupervisor(adapter, envelope=envelope, clock=WallClock())
+        executive = MissionExecutive(supervisor, spec, clock=WallClock())
+        print(f"Running mission {spec.name!r} ({len(spec.waypoints)} waypoints)...")
+        result = await executive.run(VehicleEndpoint(host=args.host, port=args.port))
+        print(f"\nFinal state: {result.state.value}  reason={result.reason!r}")
+        for w in result.waypoints:
+            arrived = "arrived" if w.arrived else "TIMED OUT"
+            print(f"  waypoint {w.index}: error={w.error_m:.2f}m ({arrived})")
+        if result.return_outcome is not None:
+            r = result.return_outcome
+            print(
+                f"  return-to-home: error={r.error_m:.2f}m ({'arrived' if r.arrived else 'TIMED OUT'})"
+            )
+        print(f"wall_time={result.wall_time_s:.1f}s")
+        return 0 if result.ok else 1
+
+    return asyncio.run(run())
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aeris")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -167,6 +199,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     monitor.add_argument("--rate", type=float, default=5.0, help="Print rate in Hz")
     monitor.set_defaults(func=_cmd_vehicle_monitor)
+
+    mission = subparsers.add_parser("mission", help="Waypoint missions (spec §51 Phase 6)")
+    mission_sub = mission.add_subparsers(dest="mission_command", required=True)
+
+    mission_run = mission_sub.add_parser("run", help="Run a mission spec end to end")
+    mission_run.add_argument(
+        "mission_path", help="Path to a mission YAML (e.g. configs/missions/square.yaml)"
+    )
+    mission_run.add_argument("--host", default="127.0.0.1", help="Vehicle endpoint host")
+    mission_run.add_argument(
+        "--port", type=int, default=14540, help="Vehicle endpoint port (instance 0's offboard link)"
+    )
+    mission_run.add_argument(
+        "--safety-config", default=str(_DEFAULT_SAFETY_YAML), help="Path to the S1 envelope YAML"
+    )
+    mission_run.set_defaults(func=_cmd_mission_run)
 
     return parser
 

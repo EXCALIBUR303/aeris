@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 
 import pytest
-from _fakes import make_state
+from tests.fixtures.vehicle_fakes import make_state
 
 from aeris.core.frames.quaternion import Quaternion
 from aeris.core.frames.vector import Vec3

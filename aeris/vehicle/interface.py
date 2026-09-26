@@ -171,6 +171,15 @@ class VelocitySetpoint:
 
 Setpoint = PositionSetpoint | VelocitySetpoint
 
+# Spec §16.1 rule 1 / §14.3 contract 2: "No learned component outputs
+# anything below HighLevelAction, which is one of: body/odom velocity +
+# yaw rate; a position/waypoint target; a subgoal for the planner."
+# Currently identical to Setpoint -- the third variant (a planner subgoal)
+# has no concrete type yet and is added when Phase 12's planner exists.
+# `aeris.autonomy` may depend on this type (and nothing else vehicle-side)
+# per the import-linter contract of the same name.
+HighLevelAction = Setpoint
+
 
 @dataclass(frozen=True, slots=True)
 class Waypoint:

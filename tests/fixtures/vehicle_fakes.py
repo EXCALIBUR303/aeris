@@ -1,10 +1,12 @@
-"""A fake ``VehicleInterface``/``CommandPort`` for aeris.safety unit tests.
+"""A fake ``VehicleInterface``/``CommandPort``, shared across unit tests
+that need one (``aeris.safety``, ``aeris.autonomy.mission``, ...).
 
-Not collected by pytest (no ``test_`` prefix) -- imported directly by the
-test modules in this directory. Kept here rather than a package-wide
-``tests/fixtures/`` module (spec §44.3 "centralized" mocks) since it's
-specific to the ``VehicleInterface``/``CommandPort`` protocols this one
-package's tests need.
+Not collected by pytest (no ``test_`` prefix). Centralized here per spec
+§44.3 ("Mocks are ... centralized (``tests/fixtures/``...)") since more
+than one package's tests need the same fake vehicle -- import it as
+``from tests.fixtures.vehicle_fakes import FakeVehicle, make_state``
+(this resolves via Python's implicit namespace packages; no
+``__init__.py`` needed as long as pytest runs from the repo root).
 """
 
 from __future__ import annotations

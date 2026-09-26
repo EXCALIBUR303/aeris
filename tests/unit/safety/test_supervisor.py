@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from _fakes import FakeVehicle, make_state
+from tests.fixtures.vehicle_fakes import FakeVehicle, make_state
 
 from aeris.core.clock import ManualClock
 from aeris.core.errors import UnsafeStateError
