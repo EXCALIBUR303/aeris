@@ -11,6 +11,7 @@ than one package's tests need the same fake vehicle -- import it as
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -102,6 +103,11 @@ class FakeVehicle:
         self.calls.append(("disconnect", ()))
 
     async def get_vehicle_state(self) -> VehicleState:
+        await asyncio.sleep(0)  # a genuine event-loop yield point, zero added delay --
+        # lets a concurrent task (e.g. a background telemetry sampler) get
+        # scheduled between calls, matching how a real vehicle connection
+        # would behave; without this, a fully "instant" fake never yields
+        # at all and a concurrent sampler task never runs.
         return self.state
 
     async def subscribe_telemetry(self, rate_hz: float) -> AsyncIterator[VehicleState]:

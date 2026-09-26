@@ -13,6 +13,7 @@ dependencies = [
     "pydantic>=2.9",
     "pyyaml>=6.0",
     "structlog>=24.4",
+    "mcap>=1.5",  # aeris.replay (spec §39.1, ADR-012): MCAP, pure-Python, no ROS required
 ]
 
 [project.scripts]
@@ -106,10 +107,10 @@ plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 # Spec §14.2: strict on aeris.core, aeris.vehicle, aeris.safety,
-# aeris.learning.ppo, aeris.evaluation (the last two don't exist yet).
-# aeris.vehicle was missed here in Phase 4 -- added now, both packages
-# confirmed to already pass --strict with no code changes needed.
-module = ["aeris.core.*", "aeris.vehicle.*", "aeris.safety.*"]
+# aeris.learning.ppo (doesn't exist yet), aeris.evaluation.
+# aeris.vehicle was missed here in Phase 4 -- added then. aeris.evaluation
+# added now that Phase 7 creates it.
+module = ["aeris.core.*", "aeris.vehicle.*", "aeris.safety.*", "aeris.evaluation.*"]
 strict = true
 
 [[tool.mypy.overrides]]
@@ -177,10 +178,16 @@ forbidden_modules = [
     "aeris.core.frames.conventions",
 ]
 
+[[tool.importlinter.contracts]]
+name = "groundtruth is privileged: autonomy must not import it (spec §17.4)"
+type = "forbidden"
+source_modules = ["aeris.autonomy"]
+forbidden_modules = ["aeris.simulation.groundtruth"]
+# Widened to aeris.learning/aeris.perception/aeris.mapping/aeris.localization
+# as each of those packages is created (spec §14.3 contract 1) — only
+# aeris.autonomy exists to check against as of Phase 7.
+
 # Contracts to be ADDED (not yet, since the packages don't exist):
-#   Phase 7/8: "aeris.learning|aeris.autonomy|aeris.perception|aeris.mapping|
-#               aeris.localization must not import aeris.simulation.groundtruth"
-#              (forbidden contract)
 #   Phase 25:  "aeris must not import backend or frontend" (forbidden contract)
 #   Phase 8:   "nothing under aeris/ imports gz.* except
 #               aeris.simulation.bridge._gz_process" (forbidden contract)
