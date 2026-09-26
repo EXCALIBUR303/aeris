@@ -1,0 +1,143 @@
+{
+  "name": "obstacle_suite_pillar_forest",
+  "family": "f1_rubble",
+  "split": "test_id",
+  "seed": 0,
+  "bounds": {
+    "min_x": -6.5,
+    "min_y": -6.5,
+    "min_z": 0.0,
+    "max_x": 6.5,
+    "max_y": 6.5,
+    "max_z": 3.5
+  },
+  "altitude_band_m": [
+    0.3,
+    3.0
+  ],
+  "boxes": [],
+  "cylinders": [
+    {
+      "x": -4.5,
+      "y": -4.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": -4.5,
+      "y": -1.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": -4.5,
+      "y": 1.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": -4.5,
+      "y": 4.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": -1.5,
+      "y": -4.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": -1.5,
+      "y": -1.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": -1.5,
+      "y": 1.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": -1.5,
+      "y": 4.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": 1.5,
+      "y": -4.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": 1.5,
+      "y": -1.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": 1.5,
+      "y": 1.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": 1.5,
+      "y": 4.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": 4.5,
+      "y": -4.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": 4.5,
+      "y": -1.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": 4.5,
+      "y": 1.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    },
+    {
+      "x": 4.5,
+      "y": 4.5,
+      "z": 1.25,
+      "radius_m": 0.3,
+      "height_m": 2.5
+    }
+  ],
+  "targets": [],
+  "spawn_poses": [
+    {
+      "x": -5.5,
+      "y": 0.0,
+      "z": 0.1,
+      "yaw_rad": 0.0
+    }
+  ],
+  "ambient_intensity": 1.0
+}

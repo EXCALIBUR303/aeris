@@ -27,6 +27,8 @@ from aeris.simulation.launcher.params import parse_params_file
 from aeris.simulation.launcher.profiles import load_profile
 from aeris.simulation.launcher.state import SimState, read_state, stop_by_state, write_state
 from aeris.simulation.px4_paths import resolve_px4_layout
+from aeris.simulation.worlds.batch import generate_batch
+from aeris.simulation.worlds.spec import WorldFamily, WorldSplit
 from aeris.vehicle.interface import VehicleEndpoint
 from aeris.vehicle.px4_mavlink.adapter import Px4MavlinkAdapter
 
@@ -34,6 +36,14 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 _PROFILES_DIR = _REPO_ROOT / "configs" / "simulation"
 _PARAMS_DIR = _REPO_ROOT / "configs" / "vehicle" / "px4_params"
 _DEFAULT_SAFETY_YAML = _REPO_ROOT / "configs" / "vehicle" / "safety.yaml"
+_DEFAULT_WORLDS_OUT_DIR = _REPO_ROOT / "results" / "worlds"
+
+_WORLD_FAMILY_ALIASES = {
+    "rubble": WorldFamily.RUBBLE,
+    "office": WorldFamily.OFFICE,
+    "warehouse": WorldFamily.WAREHOUSE,
+    "collapsed": WorldFamily.COLLAPSED,
+}
 
 _logger = get_logger(component="cli")
 
@@ -166,6 +176,17 @@ def _cmd_mission_run(args: argparse.Namespace) -> int:
     return asyncio.run(run())
 
 
+def _cmd_worlds_generate(args: argparse.Namespace) -> int:
+    family = _WORLD_FAMILY_ALIASES[args.family]
+    split = WorldSplit(args.split)
+    out_dir = Path(args.out_dir)
+    written = generate_batch(family=family, split=split, n=args.n, out_dir=out_dir)
+    for path in written:
+        print(f"wrote {path}")
+    print(f"generated {len(written)} {family.value}/{split.value} world(s) under {out_dir}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aeris")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -215,6 +236,26 @@ def build_parser() -> argparse.ArgumentParser:
         "--safety-config", default=str(_DEFAULT_SAFETY_YAML), help="Path to the S1 envelope YAML"
     )
     mission_run.set_defaults(func=_cmd_mission_run)
+
+    worlds = subparsers.add_parser("worlds", help="Procedural worlds (spec §51 Phase 9)")
+    worlds_sub = worlds.add_subparsers(dest="worlds_command", required=True)
+
+    worlds_generate = worlds_sub.add_parser("generate", help="Generate a batch of WorldSpecs")
+    worlds_generate.add_argument(
+        "--family", required=True, choices=sorted(_WORLD_FAMILY_ALIASES), help="World family"
+    )
+    worlds_generate.add_argument(
+        "--split", required=True, choices=[s.value for s in WorldSplit], help="Train/val/test split"
+    )
+    worlds_generate.add_argument(
+        "--n", type=int, required=True, help="Number of worlds to generate"
+    )
+    worlds_generate.add_argument(
+        "--out-dir",
+        default=str(_DEFAULT_WORLDS_OUT_DIR),
+        help="Output directory (default: results/worlds)",
+    )
+    worlds_generate.set_defaults(func=_cmd_worlds_generate)
 
     return parser
 

@@ -1,0 +1,42 @@
+{
+  "seed_ranges": {
+    "test_id": [
+      20000,
+      20100
+    ],
+    "test_ood": [
+      30000,
+      30100
+    ],
+    "train": [
+      0,
+      10000
+    ],
+    "val": [
+      10000,
+      10200
+    ]
+  },
+  "test_world_hashes": {
+    "f1_rubble_20000": "32314553754ccec68e6386b37228ad874273273d9234b68a04c05c0f59e047b2",
+    "f1_rubble_20001": "aa5d80cfd838e6f4fd4a4de1a0b5c5dd6e3255844f17f8a642e2d4b85f18c9eb",
+    "f1_rubble_20002": "8d52d13854f35a812f95630a9d7d59bb4784a48d80d854669edff96d426467d5",
+    "f1_rubble_20003": "1a63ac83b23d42e716269be577b8eb7f09259404cfb3ee984e71bdb71a7429eb",
+    "f1_rubble_20004": "6e7b3a07217f1e5cdccc7c2ca3b550a619ba77104c86eef858f0174980e0bf51",
+    "f2_office_20000": "dc53168225c6a4d81e61b7dd7a50a1c45bffff6f0a36a53a5932add5959f57c6",
+    "f2_office_20001": "1a36c0d44c5b83aa527549a024d29c078b9695e10bcdf3e85c71f4c7f587faed",
+    "f2_office_20002": "164e513c0e07232d891ebd02ea151e284c045069884d79a5b97ba9aa9381e4ec",
+    "f2_office_20003": "f8169ca1a1545ed96eca5997fdfe8894597c6044f1c61d50d56ad1a1c3872655",
+    "f2_office_20004": "f15c413c671d2f0930c5f5e9c6b13dfeb325bb25636d0aa129d6e39bf979bb33",
+    "f3_warehouse_20000": "0af217789f4b66508cbbf259a2d7dce433664b28d57c9ad6b49dec75bf257569",
+    "f3_warehouse_20001": "82b94b21a5717dba4ab13d0bfb38efd2865986d951686652f4766ed674ef148d",
+    "f3_warehouse_20002": "eea0deaba63558d96cb2f2a7ab16cdc96c4817a9bb1da120dd04d144eed70aa8",
+    "f3_warehouse_20003": "973eaac0868be64af2ff4694697f3820b1fdfceb222e74dbcf08dd723ad7f920",
+    "f3_warehouse_20004": "682a6246d7d023aa0881fd47e3cc6ee8205c68343bb627a0e4bacd9fcd2e8fba",
+    "f4_collapsed_30000": "4dd0d916a3ab94285791454942d34c479be8e1890de7d03e45b4ab7c8f51d8c0",
+    "f4_collapsed_30001": "560310bfc07969cfa0d2093cbaec53de1ce2876d86ff831198a618c32a779f1d",
+    "f4_collapsed_30002": "6eca5de11eba783e5215626d5b4f6f9d8d21cfc8f53301cc9ff734315e063afa",
+    "f4_collapsed_30003": "b4ae0d4d2bf5863193700ae99bfd7a64e536dd44be07343edcb3b72d128a51d9",
+    "f4_collapsed_30004": "2315ae31de4fd7a1e90364bf802941e3e492c75c394b01b62ba629e1029646d7"
+  }
+}
