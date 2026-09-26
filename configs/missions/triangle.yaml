@@ -1,0 +1,16 @@
+# AERIS — triangle waypoint mission (spec §51 Phase 6: "3 mission
+# templates x 5 runs"). Same altitude/envelope as square.yaml.
+
+name: triangle
+takeoff_altitude_m: 3.0
+time_budget_s: 120.0
+waypoints:
+  - x: 5.0
+    y: 0.0
+    z: 3.0
+  - x: 2.5
+    y: 4.33
+    z: 3.0
+  - x: 0.0
+    y: 0.0
+    z: 3.0

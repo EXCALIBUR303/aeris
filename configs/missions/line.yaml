@@ -1,0 +1,13 @@
+# AERIS — out-and-back line mission (spec §51 Phase 6: "3 mission
+# templates x 5 runs"). The simplest template: one leg out, one back.
+
+name: line
+takeoff_altitude_m: 3.0
+time_budget_s: 90.0
+waypoints:
+  - x: 6.0
+    y: 0.0
+    z: 3.0
+  - x: 0.0
+    y: 0.0
+    z: 3.0

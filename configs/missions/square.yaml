@@ -1,0 +1,22 @@
+# AERIS — square waypoint mission (spec §51 Phase 6's literal expected
+# output: "aeris mission run configs/missions/square.yaml"). A 5m square
+# at 3m altitude, same envelope Phase 5's fly_box.py already validated
+# live (0.43-0.50m arrival error, well within the 1.0m default
+# acceptance_radius_m below).
+
+name: square
+takeoff_altitude_m: 3.0
+time_budget_s: 120.0
+waypoints:
+  - x: 5.0
+    y: 0.0
+    z: 3.0
+  - x: 5.0
+    y: 5.0
+    z: 3.0
+  - x: 0.0
+    y: 5.0
+    z: 3.0
+  - x: 0.0
+    y: 0.0
+    z: 3.0
