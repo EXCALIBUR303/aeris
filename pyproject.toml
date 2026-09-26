@@ -23,12 +23,27 @@ dependencies = [
 aeris = "aeris.cli:main"
 
 [project.optional-dependencies]
-# aeris.vehicle / aeris.simulation transport & sim-adjacent deps (Phase 3+)
+# aeris.vehicle / aeris.simulation transport & sim-adjacent deps (Phase 3+).
+# numpy/numba moved in here (Phase 11): ADR-0009's block-hashed voxel map +
+# Numba ray integration needs them now, not just aeris.learning (Phase 13+)
+# -- they were originally scoped to "learn" on the (correct, at the time)
+# assumption that nothing before Phase 13 needed numpy. `learn` keeps its
+# own copy below too since it independently needs both regardless of
+# mapping's existence; uv/pip just resolve the union when both extras are
+# requested, so the duplication is documentation, not a conflict.
 sim = [
     "pymavlink>=2.4.50",
     "mavsdk>=4.0.0",
     "pyzmq>=26.2",
     "msgpack>=1.1",
+    "numpy>=2.0",
+    "numba>=0.60",
+    # gz.msgs10's generated bindings import google.protobuf at the Python
+    # level (docs/sensors.md) -- this was installed by hand into the venv
+    # during Phase 8's investigation and never added here, a latent gap
+    # `uv sync` just surfaced (Phase 11) by silently removing it as an
+    # untracked package. Declaring it here is the actual fix.
+    "protobuf>=5.0",
 ]
 # aeris.learning deps (Phase 13+)
 learn = [
@@ -196,13 +211,13 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "groundtruth is privileged: autonomy/perception must not import it (spec §17.4, §14.3 contract 1)"
+name = "groundtruth is privileged: autonomy/perception/mapping/localization must not import it (spec §17.4, §14.3 contract 1)"
 type = "forbidden"
-source_modules = ["aeris.autonomy", "aeris.perception"]
+source_modules = ["aeris.autonomy", "aeris.perception", "aeris.mapping", "aeris.localization"]
 forbidden_modules = ["aeris.simulation.groundtruth"]
-# Widened to aeris.learning/aeris.mapping/aeris.localization as each of
-# those packages is created (spec §14.3 contract 1) — aeris.perception
-# added in Phase 8, which is when that package first exists to check.
+# Widened to aeris.mapping/aeris.localization in Phase 11 (this is when
+# those packages first exist to check); aeris.learning still to come in
+# Phase 13.
 
 [[tool.importlinter.contracts]]
 name = "gz.*/rclpy are confined to the Sensor Bridge process (spec §14.3 contract 5)"

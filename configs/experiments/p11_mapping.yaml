@@ -1,0 +1,55 @@
+# AERIS Phase 11's map-accuracy experiment (spec §51 Phase 11).
+#
+# Reuses the same 5 obstacle suites Phase 9 committed (also Phase 10's own
+# experiment worlds) -- spec's validation gate names "5 worlds," and these
+# are already-built, already-live-tested WorldSpecs with real geometry to
+# compare against, so building a second set of worlds just for this
+# experiment would duplicate Phase 9's own work for no benefit.
+#
+# One live episode per world (a hover, then a >360-degree yaw sweep at a
+# fixed point -- spec's own testing line: "hover-and-yaw sweep in a known
+# world"), not one per (world, pose-source) triple: all three conditions
+# (GT / PX4 EKF / noisy-EKF) are built from the *same* depth stream within
+# that one flight (aeris.evaluation.mapping_episode), so 5 worlds means 5
+# live flights, not 15.
+
+experiment_id: p11_mapping
+scenarios:
+  - corridor
+  - pillar_forest
+  - dead_end
+  - narrow_gap
+  - overhang_within_band
+
+hover_altitude_m: 1.0
+# Long enough for a statistically meaningful per-frame latency sample --
+# confirmed live that a short sweep (~14s, ~22 frames) let 1-2 isolated
+# GC-pause outliers single-handedly swing the computed p95 across the
+# 50ms gate even though the bulk of frames were a comfortable ~20-30ms;
+# see docs/mapping.md for the full live diagnosis.
+sweep_duration_s: 45.0
+yaw_rate_radps: 0.45  # >2 full 360-degree sweeps at this duration
+
+mapping:
+  # 0.15m, not spec's stated *default* of 0.2m (still within its stated
+  # 0.15-0.25m range): the obstacle suites' walls are exactly
+  # _WALL_THICKNESS_M = 0.15m thick (Phase 9/10). At 0.2m resolution, the
+  # cell whose center aligns with a wall's centerline can land just
+  # outside the wall's own 0.15m extent -- confirmed live (Phase 11) via
+  # direct is_occupied() checks and a full experiment run: every occupied
+  # cell against a corridor/dead_end/narrow_gap/overhang_within_band wall
+  # was a false positive at 0.2m even with the M/W frame bug already
+  # fixed and a perfect GT pose. pillar_forest (0.3m-radius cylinders,
+  # well above either resolution) was unaffected either way -- this is a
+  # resolution/geometry quantization mismatch specific to thin walls, not
+  # a sensing or pose-estimation error. See docs/mapping.md.
+  resolution_m: 0.15
+  l_occ: 0.85
+  l_free: -0.4
+  l_min: -4.0
+  l_max: 4.0
+  max_range_m: 15.0
+
+noise_seed: 20261001
+noisy_walk_step_m: 0.01
+noisy_noise_std_m: 0.05
