@@ -123,6 +123,20 @@ strict = true
 module = ["pymavlink.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# No stubs/py.typed shipped.
+module = ["msgpack.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Homebrew's gz-transport13/gz-msgs10 Python bindings (Phase 8) -- not a
+# pip package, so no stubs are installable. Confined to
+# aeris.simulation.bridge._gz_process by import-linter contract 5 (spec
+# §14.3); that module is intentionally not in the strict override list
+# above.
+module = ["gz.*"]
+ignore_missing_imports = true
+
 # ---------------------------------------------------------------------------
 # import-linter — dependency contracts per spec §14.3.
 # Contracts reference only packages that exist today; each later phase adds
@@ -131,6 +145,9 @@ ignore_missing_imports = true
 # ---------------------------------------------------------------------------
 [tool.importlinter]
 root_package = "aeris"
+# Needed for the gz.*/rclpy contract below, whose forbidden_modules are
+# external packages rather than something under aeris itself.
+include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "core.errors and core.types are dependency-free within aeris.core"
@@ -179,18 +196,28 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "groundtruth is privileged: autonomy must not import it (spec §17.4)"
+name = "groundtruth is privileged: autonomy/perception must not import it (spec §17.4, §14.3 contract 1)"
 type = "forbidden"
-source_modules = ["aeris.autonomy"]
+source_modules = ["aeris.autonomy", "aeris.perception"]
 forbidden_modules = ["aeris.simulation.groundtruth"]
-# Widened to aeris.learning/aeris.perception/aeris.mapping/aeris.localization
-# as each of those packages is created (spec §14.3 contract 1) — only
-# aeris.autonomy exists to check against as of Phase 7.
+# Widened to aeris.learning/aeris.mapping/aeris.localization as each of
+# those packages is created (spec §14.3 contract 1) — aeris.perception
+# added in Phase 8, which is when that package first exists to check.
+
+[[tool.importlinter.contracts]]
+name = "gz.*/rclpy are confined to the Sensor Bridge process (spec §14.3 contract 5)"
+type = "forbidden"
+source_modules = ["aeris"]
+forbidden_modules = ["gz", "rclpy"]
+ignore_imports = [
+    # grimp records external-package imports at their top-level name only
+    # (not the full submodule path), so this one line covers every
+    # `gz.msgs10.*`/`gz.transport13` import in that file.
+    "aeris.simulation.bridge._gz_process -> gz",
+]
 
 # Contracts to be ADDED (not yet, since the packages don't exist):
 #   Phase 25:  "aeris must not import backend or frontend" (forbidden contract)
-#   Phase 8:   "nothing under aeris/ imports gz.* except
-#               aeris.simulation.bridge._gz_process" (forbidden contract)
 #   Phase 10+: "only aeris.vehicle.px4_mavlink (and later px4_mavsdk) may
 #               import aeris.core.frames.conventions" (forbidden contract,
 #               widened once autonomy/mapping/perception packages exist —
@@ -200,6 +227,7 @@ forbidden_modules = ["aeris.simulation.groundtruth"]
 # ---------------------------------------------------------------------------
 # pytest
 # ---------------------------------------------------------------------------
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [

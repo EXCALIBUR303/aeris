@@ -1,0 +1,42 @@
+_generated_by: scripts/generate_sensors_config.py
+_source_model: /Users/sid/aeris-deps/PX4-Autopilot/Tools/simulation/gz/models/x500_depth/model.sdf
+model: x500_depth
+sensors:
+  front_rgb:
+    sdf_sensor_name: IMX214
+    extrinsics_T_base_sensor:
+      translation:
+      - 0.13233
+      - 0.0
+      - 0.020780000000000003
+      rotation_wxyz:
+      - 1.0
+      - 0.0
+      - 0.0
+      - 0.0
+    intrinsics:
+      width: 1920
+      height: 1080
+      fx: 1397.2234694239507
+      fy: 1397.2234694239507
+      cx: 960.0
+      cy: 540.0
+  front_depth:
+    sdf_sensor_name: StereoOV7251
+    extrinsics_T_base_sensor:
+      translation:
+      - 0.13233
+      - 0.0
+      - 0.020780000000000003
+      rotation_wxyz:
+      - 1.0
+      - 0.0
+      - 0.0
+      - 0.0
+    intrinsics:
+      width: 640
+      height: 480
+      fx: 432.49604203504293
+      fy: 432.49604203504293
+      cx: 320.0
+      cy: 240.0
