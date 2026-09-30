@@ -55,6 +55,49 @@ def test_column_partially_observed_with_no_occupied_voxel_stays_unknown() -> Non
     assert grid.state_at((ix, iy)) == CellState.UNKNOWN
 
 
+def test_free_rule_any_observed_flips_a_partially_observed_column_to_free() -> None:
+    """Regression test for a real Phase 12 bug: under the default
+    "all_observed" rule, a forward-looking depth camera flying level at a
+    single hover altitude structurally never sweeps every voxel of a
+    multi-meter altitude band, so no column ever becomes FREE and
+    frontier-based exploration (which requires a FREE cell to exist)
+    never finds anything -- confirmed live before this fix (see
+    docs/exploration.md). "any_observed" (free if something was observed
+    and none of it was occupied) fixes it without weakening the stricter
+    default map-accuracy evaluation still uses."""
+    m = _map()
+    ix, iy, iz = int(1.0 / _RES), int(0.0 / _RES), int(0.3 / _RES)
+    m._apply_index_delta(ix, iy, iz, m.config.l_free)  # only the lowest in-band voxel touched
+
+    grid = project_band(
+        m,
+        z_lo_m=0.3,
+        z_hi_m=3.0,
+        x_range_m=(0.0, 2.0),
+        y_range_m=(-1.0, 1.0),
+        free_rule="any_observed",
+    )
+    assert grid.state_at((ix, iy)) == CellState.FREE
+
+
+def test_free_rule_any_observed_still_calls_a_column_with_any_occupied_voxel_occupied() -> None:
+    """ "any_observed" only relaxes the FREE rule -- OCCUPIED must still
+    win whenever anything in the column was actually seen occupied."""
+    m = _map()
+    m.integrate_ray(Vec3(0.0, 0.0, 0.0), Vec3(1.0, 0.0, 1.5), is_hit=True)
+
+    grid = project_band(
+        m,
+        z_lo_m=0.3,
+        z_hi_m=3.0,
+        x_range_m=(0.0, 2.0),
+        y_range_m=(-1.0, 1.0),
+        free_rule="any_observed",
+    )
+    hit_cell = (int(1.0 / _RES), int(0.0 / _RES))
+    assert grid.state_at(hit_cell) == CellState.OCCUPIED
+
+
 def test_inflation_dilates_occupied_into_adjacent_free_cells() -> None:
     m = _map()
     m.integrate_ray(Vec3(0.0, 0.0, 0.0), Vec3(1.0, 0.0, 1.5), is_hit=True)

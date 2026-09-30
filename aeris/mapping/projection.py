@@ -15,11 +15,13 @@ import math
 from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import StrEnum, unique
+from typing import Literal
 
 from aeris.core.frames.vector import Vec3
 from aeris.mapping.voxel import VoxelMap
 
 Cell2D = tuple[int, int]
+FreeRule = Literal["all_observed", "any_observed"]
 
 _NEIGHBOR_OFFSETS_8: tuple[Cell2D, ...] = (
     (1, 0),
@@ -98,6 +100,7 @@ def project_band(
     x_range_m: tuple[float, float],
     y_range_m: tuple[float, float],
     inflation_m: float = 0.0,
+    free_rule: FreeRule = "all_observed",
 ) -> BandGrid:
     """Project ``voxel_map`` onto the 2D altitude band ``[z_lo_m, z_hi_m]``,
     over the finite window ``x_range_m`` x ``y_range_m`` (a caller-supplied
@@ -109,6 +112,27 @@ def project_band(
     0 (no inflation) -- a planner passes a real margin; map-accuracy
     evaluation must not, since inflating before comparing to exact GT
     geometry would count the safety margin itself as false positives.
+
+    ``free_rule`` picks between two definitions of a FREE column:
+
+    - ``"all_observed"`` (the default, spec §21.1's literal wording:
+      "free if all [voxels in the band] are observed free") -- what
+      Phase 11's map-accuracy evaluation needs and was validated against,
+      since it's the strictest, most conservative reading. Left
+      unconditionally as the default so no existing caller's behavior
+      changes.
+    - ``"any_observed"`` -- free if at least one voxel in the band has
+      been observed (touched by any ray) and none of the *observed* ones
+      are occupied. Live-diagnosed as necessary for Phase 12's own
+      exploration/A* use: a forward-looking, narrow-vertical-FOV depth
+      camera flying level at a single hover altitude structurally cannot
+      sweep every voxel of a multi-meter-tall altitude band (confirmed
+      live -- see docs/exploration.md), so under ``"all_observed"`` no
+      column ever becomes FREE at all and frontier detection (which
+      requires a FREE cell to exist) never finds anything to explore
+      toward. ``"any_observed"`` is the same "trust what you've actually
+      seen" rule most real 2D-projected navigation grids use, and is
+      never used for map-accuracy comparisons against exact GT geometry.
     """
     res = voxel_map.config.resolution_m
     min_ix = math.floor(x_range_m[0] / res)
@@ -124,16 +148,19 @@ def project_band(
         for iy in range(min_iy, max_iy + 1):
             any_occupied = False
             all_observed = True
+            any_observed = False
             for iz in range(min_iz, max_iz + 1):
                 state = voxel_map.is_occupied_at_index((ix, iy, iz))
                 if state is None:
                     all_observed = False
-                elif state:
-                    any_occupied = True
-                    break
+                else:
+                    any_observed = True
+                    if state:
+                        any_occupied = True
+                        break
             if any_occupied:
                 occupied.add((ix, iy))
-            elif all_observed:
+            elif all_observed if free_rule == "all_observed" else any_observed:
                 free.add((ix, iy))
             # else: unknown -- neither set gets it
 

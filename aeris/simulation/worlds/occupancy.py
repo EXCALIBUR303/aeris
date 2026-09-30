@@ -75,6 +75,24 @@ def is_occupied(spec: WorldSpec, p: Vec3) -> bool:
     )
 
 
+def column_occupied_in_band(
+    spec: WorldSpec, x: float, y: float, *, z_lo_m: float, z_hi_m: float, resolution_m: float
+) -> bool:
+    """Whether *any* point in the queried altitude band at ``(x, y)`` is
+    occupied per the exact ``WorldSpec`` geometry -- sampled at
+    ``resolution_m`` steps, matching how the agent's own band projection
+    decides "any voxel in-band occupied" (spec §21.1), so both the
+    evaluator's map-accuracy check (Phase 11) and its coverage raycaster
+    (Phase 12) use the same effective vertical granularity as each other
+    and as the agent's own map."""
+    z = z_lo_m + resolution_m / 2.0
+    while z <= z_hi_m:
+        if is_occupied(spec, Vec3(x, y, z)):
+            return True
+        z += resolution_m
+    return False
+
+
 @dataclass(frozen=True, slots=True)
 class OccupancyGrid:
     """A sparse voxel grid: only occupied cells are stored."""

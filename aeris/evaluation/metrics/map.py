@@ -25,7 +25,7 @@ from dataclasses import dataclass
 
 from aeris.core.frames.vector import ZERO, Vec3
 from aeris.mapping.projection import BandGrid, CellState
-from aeris.simulation.worlds.occupancy import is_occupied
+from aeris.simulation.worlds.occupancy import column_occupied_in_band
 from aeris.simulation.worlds.spec import WorldSpec
 
 
@@ -37,22 +37,6 @@ class MapEvaluationResult:
     map_coverage: float
     n_observed_cells: int
     n_total_cells: int
-
-
-def _gt_column_occupied(
-    spec: WorldSpec, x: float, y: float, *, z_lo_m: float, z_hi_m: float, resolution_m: float
-) -> bool:
-    """Whether *any* point in the queried altitude band at ``(x, y)`` is
-    occupied per the exact ``WorldSpec`` geometry -- sampled at
-    ``resolution_m`` steps, matching how the agent's own band projection
-    decides "any voxel in-band occupied" (spec §21.1), so both sides use
-    the same effective vertical granularity."""
-    z = z_lo_m + resolution_m / 2.0
-    while z <= z_hi_m:
-        if is_occupied(spec, Vec3(x, y, z)):
-            return True
-        z += resolution_m
-    return False
 
 
 def evaluate_map(
@@ -85,7 +69,7 @@ def evaluate_map(
             continue
         observed += 1
         cx, cy = grid.cell_center_xy(cell)
-        gt_occupied = _gt_column_occupied(
+        gt_occupied = column_occupied_in_band(
             spec,
             cx + spawn_world.x,
             cy + spawn_world.y,
