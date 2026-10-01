@@ -2,8 +2,9 @@
 line). A wiring/smoke test against a real PX4 SITL + Gazebo session: does
 nearest-frontier exploration -- map building, subgoal selection, A*
 planning, path following, the collision shield -- actually fly a
-coherent episode end to end, without crashing, making real progress, and
-recording a GT trajectory? (The H0.1 validation-gate experiment itself,
+coherent episode end to end, without crashing, making real progress,
+recording a GT trajectory, and keeping the vehicle inside the world's
+altitude band the whole time? (The H0.1 validation-gate experiment itself,
 with all three strategies across multiple worlds and repeats, is
 :mod:`scripts.run_p12_exploration_experiment`, run separately and
 reported in the phase report -- this test is the cheap, fast confirmation
@@ -126,6 +127,13 @@ def test_nearest_frontier_flies_a_coherent_exploration_episode(
     assert result.reason in ("", "timeout"), f"episode failed early: reason={result.reason!r}"
     assert result.gt_trajectory, "no GT trajectory recorded at all"
     assert result.n_subgoals_chosen > 0, "the strategy never chose a real subgoal"
+    # The vehicle actually stayed in the world's altitude band (GT z) --
+    # Phase 12's version of this test passed without ever checking, and
+    # its harness could score a vehicle sitting on the floor
+    # (docs/exploration.md).
+    validity = result.altitude_validity
+    assert validity is not None
+    assert validity.valid, validity.describe()
 
     n_observed = sum(
         1

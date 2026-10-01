@@ -27,6 +27,12 @@ n_repeats: 3  # spec §6's own stated minimum for classical methods in SITL
 t_max_s: 180.0  # matches H0.1's own C(180s) metric exactly
 
 hover_altitude_m: 1.0
+# Episode validity (added in Phase 13 after instrumented re-runs found
+# grounded Phase 12 episodes -- docs/exploration.md): an episode whose GT
+# altitude leaves the world's altitude_band_m for longer than this in one
+# stretch is recorded with status "invalid" (excluded from analysis), and
+# out-of-band GT poses never count toward coverage in any episode.
+max_altitude_excursion_s: 2.0
 # Each world's own altitude_band_m (spec §33's generators; the WorldSpec
 # default is 0.3-3.0m) is used as-is, not narrowed -- confirmed live
 # (Phase 12) that a forward-looking depth camera flying level at a

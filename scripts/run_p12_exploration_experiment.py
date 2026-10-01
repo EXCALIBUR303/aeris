@@ -40,7 +40,9 @@ from aeris.core.errors import SimulationLaunchError
 from aeris.core.frames.conventions import camera_optical_to_body_rotation
 from aeris.core.frames.extrinsics import load_sensor_extrinsics
 from aeris.core.frames.transform import Transform
+from aeris.core.frames.vector import Vec3
 from aeris.evaluation.exploration_episode import ExplorationEpisodeResult, run_exploration_episode
+from aeris.evaluation.metrics.altitude import check_altitude_band, in_band_poses
 from aeris.evaluation.metrics.coverage import reachable_free_cells_gt, running_coverage_trace
 from aeris.mapping.voxel import MappingConfig
 from aeris.perception.depth.projection import CameraIntrinsics
@@ -69,6 +71,19 @@ _WORLDS_DIR = _REPO_ROOT / "results" / "worlds"
 _INTRINSICS = CameraIntrinsics(
     width=640, height=480, fx=432.496042035043, fy=432.496042035043, cx=320.0, cy=240.0
 )
+
+
+def gt_trajectory_record(
+    gt_trajectory: tuple[tuple[float, Vec3, float], ...],
+) -> list[list[float]]:
+    """``[[t_sim_s, x, y, z, yaw_rad], ...]`` (world frame, mm / 0.1 mrad
+    precision) -- the same layout ``scripts/fastsim/trace_tierh_exploration.py``
+    writes, persisted in every runs.jsonl record so coverage and altitude
+    validity can be re-checked offline (Phase 12 saved neither)."""
+    return [
+        [round(t, 3), round(p.x, 3), round(p.y, 3), round(p.z, 3), round(yaw, 4)]
+        for t, p, yaw in gt_trajectory
+    ]
 
 
 def _t_body_optical(layout: Px4Layout) -> Transform:
@@ -219,6 +234,20 @@ async def run_one_episode(
         }
 
     z_lo, z_hi = world_spec.altitude_band_m
+    # Recomputed here from the trajectory itself (not taken from
+    # episode.altitude_validity) so the verdict always uses the world's own
+    # band and this file's threshold, whatever the episode was called with.
+    validity = check_altitude_band(
+        episode.gt_trajectory,
+        z_lo_m=z_lo,
+        z_hi_m=z_hi,
+        max_excursion_s=config["max_altitude_excursion_s"],
+    )
+    # Out-of-band poses never count toward coverage, even within a
+    # tolerated short excursion: C(t) raycasts from a pose's xy only, so a
+    # grounded vehicle would otherwise still "see" the band from the floor.
+    # The trace's timestamps are those of in-band poses only.
+    coverage_poses = in_band_poses(episode.gt_trajectory, z_lo_m=z_lo, z_hi_m=z_hi)
     # Deliberately config["coverage_resolution_m"], not the agent's own
     # (finer) mapping.resolution_m -- see the config file's own comment
     # for the live-timed 15.6x cost difference this avoids. Both calls
@@ -228,7 +257,7 @@ async def run_one_episode(
     reachable = reachable_free_cells_gt(world_spec, resolution_m=resolution_m)
     trace = running_coverage_trace(
         world_spec,
-        episode.gt_trajectory,
+        coverage_poses,
         reachable_free_cells=reachable,
         z_lo_m=z_lo,
         z_hi_m=z_hi,
@@ -241,7 +270,10 @@ async def run_one_episode(
         "label": label,
         "world": world_spec.name,
         "method": method,
-        "status": "completed",
+        # "invalid" (not "completed") keeps the episode out of every
+        # analysis that filters on status == "completed", while the record
+        # itself stays in runs.jsonl with its full GT trajectory.
+        "status": "completed" if validity.valid else "invalid",
         "n_gt_poses": len(episode.gt_trajectory),
         "n_reachable_free_cells": len(reachable),
         "coverage_final": c_final,
@@ -250,7 +282,10 @@ async def run_one_episode(
         "n_rotate_scans": episode.n_rotate_scans,
         "shield_intervention_rate": episode.shield_intervention_rate,
         "wall_time_s": episode.wall_time_s,
-        "reason": episode.reason,
+        "reason": episode.reason if validity.valid else validity.describe(),
+        "episode_reason": episode.reason,
+        **validity.to_record(),
+        "gt_trajectory": gt_trajectory_record(episode.gt_trajectory),
     }
 
 

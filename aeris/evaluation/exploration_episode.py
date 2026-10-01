@@ -17,6 +17,13 @@ polled purely so the evaluator can compute coverage/localization metrics
 *after* the flight from the recorded trajectory (:mod:`aeris.evaluation.metrics.coverage`);
 it is never fed into the agent's own map, exploration decisions, or A*
 planning.
+
+Every command carries an explicit altitude hold (:class:`~aeris.autonomy.navigation.altitude.AltitudeHold`,
+on the EKF altitude), and the result carries a GT-altitude validity
+verdict (:func:`~aeris.evaluation.metrics.altitude.check_altitude_band`)
+so a vehicle that ends up on the floor is flagged rather than scored --
+both added after Phase 13's instrumented re-runs found grounded episodes
+in Phase 12's harness (``docs/exploration.md``).
 """
 
 from __future__ import annotations
@@ -31,12 +38,18 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from aeris.autonomy.exploration.base import AgentPose, ExplorationStrategy
+from aeris.autonomy.navigation.altitude import AltitudeHold
 from aeris.autonomy.navigation.follower import PathFollower
 from aeris.autonomy.planning.astar import astar
 from aeris.core.clock import Clock
 from aeris.core.frames.quaternion import Quaternion
 from aeris.core.frames.transform import Transform
 from aeris.core.frames.vector import Vec3
+from aeris.evaluation.metrics.altitude import (
+    DEFAULT_MAX_EXCURSION_S,
+    AltitudeValidity,
+    check_altitude_band,
+)
 from aeris.localization.px4_ekf import Px4EkfPose
 from aeris.mapping.deltas import DeltaTracker
 from aeris.mapping.projection import BandGrid, Cell2D, cell_center_world, project_band
@@ -63,6 +76,10 @@ class ExplorationEpisodeResult:
     shield_intervention_rate: float
     wall_time_s: float
     reason: str = ""
+    # GT-altitude validity of ``gt_trajectory`` against the episode's own
+    # altitude band (``z_lo_m``/``z_hi_m``); ``None`` only when the episode
+    # never reached its control loop (preflight/arm failure).
+    altitude_validity: AltitudeValidity | None = None
 
 
 def _yaw_from_orientation(q: Quaternion) -> float:
@@ -169,6 +186,9 @@ async def run_exploration_episode(
     replan_map_change_cells: int = 20,
     shield_config: ShieldConfig | None = None,
     cruise_speed_mps: float = 1.0,
+    altitude_kp_per_s: float = 1.0,
+    altitude_max_vz_mps: float = 0.5,
+    max_altitude_excursion_s: float = DEFAULT_MAX_EXCURSION_S,
     clock: Clock,
 ) -> ExplorationEpisodeResult:
     warm_up()
@@ -176,6 +196,9 @@ async def run_exploration_episode(
     voxel_map = VoxelMap(config=config)
     ekf_source = Px4EkfPose(max_gap_s=2.0)
     follower = PathFollower(cruise_speed_mps=cruise_speed_mps, arrival_radius_m=arrival_radius_m)
+    altitude_hold = AltitudeHold(
+        target_z_m=hover_altitude_m, kp_per_s=altitude_kp_per_s, max_vz_mps=altitude_max_vz_mps
+    )
     shield = CollisionShield(config=shield_config or ShieldConfig())
     delta_tracker = DeltaTracker()
 
@@ -381,9 +404,15 @@ async def run_exploration_episode(
                         orientation_odom_body=state.orientation_odom,
                         points_body=points_body,
                     )
-                    sp = VelocitySetpoint(
-                        velocity=v_shielded, yaw_rate_radps=yaw_rate, frame="odom"
-                    )
+                    # Explicit altitude hold on every command, rotate
+                    # scans included -- applied after the shield, which
+                    # only ever constrains the horizontal component, so
+                    # the shield's guarantee is untouched and its
+                    # intervention metric still measures horizontal
+                    # throttling only. Uses PX4's own (EKF) altitude,
+                    # never GT (spec §17.4).
+                    v_cmd = altitude_hold.apply(v_shielded, state.pose_odom.z)
+                    sp = VelocitySetpoint(velocity=v_cmd, yaw_rate_radps=yaw_rate, frame="odom")
                     await supervisor.submit_setpoint(sp)
                     supervisor.autonomy_heartbeat()
                     await supervisor.tick()
@@ -416,4 +445,10 @@ async def run_exploration_episode(
         shield_intervention_rate=shield.intervention_rate,
         wall_time_s=time.monotonic() - t_start,
         reason=reason,
+        altitude_validity=check_altitude_band(
+            gt_trajectory,
+            z_lo_m=z_lo_m,
+            z_hi_m=z_hi_m,
+            max_excursion_s=max_altitude_excursion_s,
+        ),
     )

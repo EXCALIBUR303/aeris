@@ -10,7 +10,10 @@
 | `aeris.autonomy.exploration.frontier` | `NearestFrontierExploration` (Yamauchi 1997) — goes to the reachable frontier cluster with the shortest A* path, not the geometrically nearest centroid. |
 | `aeris.autonomy.exploration.utility` | `UtilityFrontierExploration` — score = (unknown cells visible from a candidate, estimated by a full-circle raycast over the agent's *own* map) / (A* path length + `lambda_turn` x heading-change cost); greedy, one candidate per frontier cluster. |
 | `aeris.evaluation.metrics.coverage` | `coverage()`/`running_coverage_trace()` — `C(t) = \|E_GT(t) ∩ F\| / \|F\|` (spec §41), computed by the evaluator from a recorded GT-pose trajectory via raycasting against exact `WorldSpec` geometry, independent of either method's own map. `reachable_free_cells_gt()` builds `F` from Phase 9's own voxelizer + reachability flood fill. |
-| `aeris.evaluation.exploration_episode` | `run_exploration_episode()` — wires a strategy + A* + `PathFollower` (waypoint-by-waypoint, not straight-line-to-subgoal) + the collision shield + the Sensor Bridge + `SafetySupervisor` into one live control loop; replans on arrival, a significant map change, or a time limit; falls back to an in-place rotation scan when nothing is currently explorable. |
+| `aeris.evaluation.exploration_episode` | `run_exploration_episode()` — wires a strategy + A* + `PathFollower` (waypoint-by-waypoint, not straight-line-to-subgoal) + the collision shield + the Sensor Bridge + `SafetySupervisor` into one live control loop; replans on arrival, a significant map change, or a time limit; falls back to an in-place rotation scan when nothing is currently explorable. Every command carries an explicit altitude hold, and the result carries a GT-altitude validity verdict (both added in Phase 13, see below). |
+| `aeris.autonomy.navigation.altitude` | `AltitudeHold` — replaces each command's vertical component with `clip(kp·(z_hover − z_EKF), ±max_vz)` (defaults kp = 1.0 /s, max 0.5 m/s), whatever produced the horizontal part. |
+| `aeris.evaluation.metrics.altitude` | `check_altitude_band()` — episode validity from the GT altitude trace (invalid if GT z leaves the world's `altitude_band_m` for more than `max_altitude_excursion_s`, 2.0 s, in one stretch); `in_band_poses()` — the per-pose filter the evaluator applies before computing coverage. |
+| `scripts/audit_p12_ulog_altitude.py` | Retroactive altitude-only audit of Phase 12's runs from PX4's own ULogs (output: `results/experiments/p12_exploration/ulog_altitude_audit.json`). |
 | `configs/experiments/p12_exploration.yaml` + `scripts/run_p12_exploration_experiment.py` | The declared 3-world x 3-method x 3-repeat grid (plus a `--tune` mode for utility-frontier's `lambda_turn`), with the same per-episode launch retry every prior phase's live experiments use. |
 | `configs/experiments/preregistration/p12_h0_1.md` | H0.1's pre-registered hypothesis, metric, statistical test, world/seed/episode counts, and exclusion rules — drafted now per spec's own task item, even though the §38.5 commit-and-hash gate doesn't fire until a later phase's *test*-split evaluation. |
 
@@ -83,6 +86,51 @@ Per spec's own explicit instruction ("if it fails, this is a baseline bug signal
 - **`lambda_turn` tuning at n=1/value.** A genuinely larger tuning budget (multiple repeats per candidate, a finer grid) would need many more live episodes than this phase's budget allowed; the small budget and its inconclusiveness are reported honestly rather than overstating a "winner."
 - **Utility-frontier's information-gain estimate ignores the agent's future heading.** It raycasts a full circle from each candidate, not the sensor's actual FOV — a deliberate simplification, since the strategy doesn't commit to any particular arrival heading, and estimating gain independent of heading avoids silently favoring one arbitrary assumed heading over another. See `aeris.autonomy.exploration.utility`'s own docstring.
 - **No 3D/multi-altitude exploration.** Spec's own V1 scoping keeps exploration within a fixed 2D altitude band (§21.1); the free-classification fix above works *within* that scope (relaxing what counts as "free" at a given altitude), not by having the vehicle change altitude to sweep more of the band.
+
+## Phase 13 follow-up: grounded episodes, altitude hold, and GT-altitude validity
+
+Phase 13's instrumented Tier H re-runs (`scripts/fastsim/trace_tierh_exploration.py`, outputs in `results/fastsim/tierh_trace/`) were the first runs of this harness that saved GT trajectories. Two of the three showed the vehicle on the floor during the episode, and the harness had scored both normally.
+
+### 1. The loop never climbed when it wasn't path following (fixed)
+
+The supervisor hands over to the loop once odom z ≥ `hover_altitude_m − 0.5` (0.5 m). After that, Phase 12 corrected altitude only implicitly: `PathFollower` pointed at waypoints placed at the hover altitude. Rotate-in-place scans sent `v = (0, 0, 0)`, so `vz = 0`. In `f2_office_10000_nearest_frontier` every A* attempt failed (0 subgoals, 81 rotate scans). The vehicle never climbed: GT z went from 0.55 m to the floor and stayed there (PX4's `vehicle_local_position.z` never above ~0.27 m, ULog `2026-10-01/07_21_50.ulg`). The episode still scored `C(180) = 0.985`, because `C(t)` raycasts from a pose's xy only and never checks its z.
+
+**Fix:** `AltitudeHold` (above) is applied to every command the loop sends, rotate scans included. It runs after the collision shield, which only constrains the horizontal component, so the shield's guarantee and its intervention metric are unchanged. It uses PX4's EKF altitude (`state.pose_odom.z`), never GT (spec §17.4).
+
+### 2. The f1_rubble mid-episode drop: EKF2 vertical-velocity divergence after IMU samples went missing (diagnosed, not fixable in this loop)
+
+In `f1_rubble_10000_nearest_frontier` the vehicle was hovering at GT z ≈ 1.0 m. GT z then fell to the floor (~0.8 m/s at impact). It stayed there ~10 s and climbed back during a later rotate scan. Diagnosed from the run's ULog (`2026-10-01/07_14_51.ulg`, ULog time ≈ gz sim time). PX4's internal `vehicle_local_position_groundtruth` was used as GT, so no clock alignment with AERIS's own GT poll was needed:
+
+- **Not an estimator reset.** `z_reset_counter`, `vz_reset_counter` and every `estimator_status.reset_count_*` are unchanged across 80–100 s. No `reset_*` event flags fired, `filter_fault_flags` = 0, and no baro or GNSS height/velocity innovation was rejected.
+- **Not a collision.** GT xy moved < 2 cm and GT tilt stayed ≤ 0.1°. The only IMU spike (body z −12.9 m/s²) comes at 85.5 s, the moment GT z reaches the floor.
+- **Not a GT-query artifact.** PX4's own GT topic, the simulated GPS (`vel_d` up to +0.79 m/s), the IMU (specific force 9.05–9.45 m/s² against 9.8 at hover) and the ESC rpm feedback all show the same real descent. AERIS's `gz topic` GT trace shows it too.
+- **Mechanism.** From ~83.2 s, EKF2's vertical velocity diverged from truth. The EKF believed the vehicle was *climbing* (delayed-state `vd` down to −0.35 m/s) while GPS and GT showed it sinking. GNSS vertical-velocity innovations grew to −0.8 m/s and were fused, but did not pull the state back in time. The offboard velocity controller, holding `vz_sp ≈ 0`, answered the phantom climb by cutting collective thrust (actuator outputs 788 → 756, rpm followed), so the vehicle really did descend and hit the floor about 2.3 s after onset.
+- **After impact.** The EKF still believed `vz ≈ −0.1`, so integrating the real +0.78 m/s impact deceleration produced the +0.65 m/s "climb" seen in `vehicle_local_position`. The EKF then held z ≈ 0.75–0.9 m for ~5 s and took ~10 s to converge to the floor through baro/GPS height innovations. The land detector never fired. With the airframe on the floor, the rotate scan's yaw-rate command saturated the yaw allocation (motor pairs ~250 vs ~810).
+- **Trigger (correlation; the EKF2-internal path is not proven).** The divergence onset coincides with the only cluster of IMU delivery gaps in the hover: `sensor_combined` gaps of 44–56 ms (nominal 4 ms) between 82.96 and 84.35 s, while `accelerometer_integral_dt` stayed at 4 ms. That is, samples were dropped, not delayed: 0.36 s of the 1.49 s window's IMU integration is missing (24%), against an exact match over a quiet 20 s baseline. ESC feedback shows the same gaps, which points to a host-side stall in the Gazebo↔PX4 data path. The same signature shows up elsewhere. In `07_21_50.ulg`, IMU loss of 16–23% at 167–171 s, with the vehicle already on the floor, was followed by EKF z drifting up to 1.05 m while GT stayed at −0.01 m. `07_25_39.ulg` (f3_warehouse) had no IMU-loss window and no EKF/GT divergence. Proving the EKF2-internal path would need an EKF2 replay of the log.
+
+The altitude hold cannot catch this failure, because it acts on the same EKF altitude that is wrong. That is why episodes also need the GT-side check below.
+
+### 3. GT-altitude validity: grounded time can no longer count as coverage
+
+`run_exploration_episode()` now returns `altitude_validity` (`check_altitude_band()` over its GT trajectory and its own `z_lo_m`/`z_hi_m` band). `scripts/run_p12_exploration_experiment.py` does three things with it:
+
+- It recomputes the verdict against each world's `altitude_band_m` with the config's `max_altitude_excursion_s` (2.0 s).
+- It records an episode that fails as `status: "invalid"` (with the excursion in `reason`), which every `status == "completed"` analysis already excludes.
+- It drops every out-of-band GT pose before computing `C(t)`, in valid episodes too.
+
+Excursion durations are measured between GT samples (~2.5 Hz in this loop) as an upper bound. Applied to the three Phase 13 traces: f1_rubble is invalid (11.6 s out of band), f2_office is invalid (101.9 s), and f3_warehouse is valid.
+
+`runs.jsonl` records now also persist the full GT trajectory (`gt_trajectory`: `[t_sim_s, x, y, z, yaw_rad]` per pose, world frame) along with the validity fields (`altitude_valid`, `altitude_longest_excursion_s`, `n_gt_poses_out_of_band`, `altitude_excursions`).
+
+### What this means for Phase 12's numbers
+
+**Phase 12's `runs.jsonl` coverage numbers could not be checked for these failure modes, because GT trajectories were not saved.** `C(180)` can't be recomputed from in-band poses only, and the Phase 13 validity rule can't be applied to AERIS's own GT. An altitude-only check *is* possible from PX4's ULogs, which survive for 25 of the 27 episodes: `scripts/audit_p12_ulog_altitude.py` applies `check_altitude_band()` to PX4's internal GT altitude over each episode's autonomy window. Results (`results/experiments/p12_exploration/ulog_altitude_audit.json`):
+
+- **f2_office_10000: 7 of 8 audited episodes are invalid.** In every one, the excursion starts right after the takeoff handover (t ≈ 25–27 s) and lasts 3.3–14.2 s, at GT z down to 0.13 m. Two episodes (random_r0, which scored the experiment's only `C = 1.000`, and nearest_frontier_r2) reached the floor. This is failure mode 1 above. f2's ~0.9–1.0 coverage values, and the f2 pairs in H0.1's pooled CI, should not be relied on.
+- **f1_rubble_10000 (9/9) and f3_warehouse_10000 (8/8 audited) are valid.** Some show brief (≤ 1.2 s) sags to ~0.22–0.28 m just after handover. f1_rubble, the world that drives the H0.1 result, has no grounded episode.
+- `f2_office_10000_random_r1` and `f3_warehouse_10000_utility_frontier_r0` have no ULog reference in their `px4.log`, so they are unaudited.
+
+This audit covers altitude only. It says nothing about whether the recorded coverage values are otherwise right.
 
 ## Using it
 
