@@ -1,0 +1,86 @@
+provenance:
+  dataset: results/sysid/steps (scripts/sysid/record_tier_h.py --session steps)
+  fitted_utc: '2026-09-30T17:43:46+00:00'
+  git_sha: 6a82f6f
+  model: first-order lag + integer delay + accel clip, explicit Euler at dt_sim=0.02s
+  note: rep0 = training, rep1 = held-out; heldout_rmse is gate item 1 (<= 0.15 m/s)
+identified:
+  tau_xy_s: 0.44
+  delay_xy_s: 0.28
+  accel_max_xy_mps2: 4.0
+  tau_yaw_s: 0.23
+  delay_yaw_s: 0.12
+  yaw_accel_max_radps2: 2.5
+fits:
+  vx:
+    n_train_steps: 8
+    n_heldout_steps: 8
+    tau_s: 0.44
+    delay_s: 0.28
+    accel_max: 3.4
+    train_rmse: 0.0793
+    heldout_rmse: 0.0617
+    ci95:
+      tau_s:
+      - 0.3998
+      - 0.4903
+      delay_s:
+      - 0.24
+      - 0.3
+      accel_max:
+      - 2.4
+      - 4.2
+  vy:
+    n_train_steps: 8
+    n_heldout_steps: 8
+    tau_s: 0.41
+    delay_s: 0.3
+    accel_max: 4.5
+    train_rmse: 0.0558
+    heldout_rmse: 0.0561
+    ci95:
+      tau_s:
+      - 0.4
+      - 0.42
+      delay_s:
+      - 0.26
+      - 0.3
+      accel_max:
+      - 2.5975
+      - 4.5
+  xy_pooled:
+    n_train_steps: 16
+    n_heldout_steps: 16
+    tau_s: 0.44
+    delay_s: 0.28
+    accel_max: 4.0
+    train_rmse: 0.069
+    heldout_rmse: 0.0593
+    ci95:
+      tau_s:
+      - 0.41
+      - 0.45
+      delay_s:
+      - 0.26
+      - 0.3
+      accel_max:
+      - 2.9
+      - 4.6
+  yaw:
+    n_train_steps: 6
+    n_heldout_steps: 6
+    tau_s: 0.23
+    delay_s: 0.12
+    accel_max: 2.5
+    train_rmse: 0.0209
+    heldout_rmse: 0.0236
+    ci95:
+      tau_s:
+      - 0.1998
+      - 0.24
+      delay_s:
+      - 0.1
+      - 0.14
+      accel_max:
+      - 1.6
+      - 2.7

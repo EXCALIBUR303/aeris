@@ -99,9 +99,9 @@ NEXT PHASE
 ============================================================
 
 **NEXT PHASE:** 13 — RL environment: system ID + FastSim + Gymnasium env.
-**RECOMMENDED MODEL:** Sonnet.
+**RECOMMENDED MODEL:** Opus 5.5 (corrected in Phase 13: this block originally said Sonnet, which contradicts spec §51's Phase 13 rating).
 **RECOMMENDED EFFORT:** High (spec's own rating for system identification + a new simulation tier).
-**SWITCH REQUIRED:** NO (already on Sonnet).
+**SWITCH REQUIRED:** YES (Phase 12 ran on Sonnet).
 **ACTION REQUIRED:** Read spec §51 Phase 13 in full before starting (this report doesn't reproduce it). Phase 13 begins the RL track (§26-27) and introduces `numpy`/`numba`'s sibling dependencies for PyTorch -- read §17.3's FastSim design and §7's hardware strategy sections again given they were written before this Mac's own Phase 0 verification. `aeris.autonomy.exploration`'s `ExplorationStrategy` protocol built this phase is what Phase 19's learned exploration policy will eventually also implement -- worth re-reading `aeris/autonomy/exploration/base.py`'s own docstring before that phase starts.
 
 ============================================================

@@ -15,6 +15,7 @@ any world is free space.
 
 from __future__ import annotations
 
+import functools
 import math
 from collections import deque
 from dataclasses import dataclass
@@ -46,6 +47,16 @@ def _box_transform(box: Box) -> Transform:
     return Transform(rotation, box.center)
 
 
+@functools.lru_cache(maxsize=4096)
+def _box_inverse(box: Box) -> Transform:
+    """``T_boxlocal_world``, memoized per (immutable) box: the coverage
+    raycaster (Phase 12) calls :func:`point_in_box` per ray sample per box,
+    and rebuilding this from quaternions every time made scoring one
+    episode take ~30 min (profiled in Phase 13). Same arithmetic, computed
+    once -- results are bit-identical."""
+    return _box_transform(box).inverse()
+
+
 def _point_in_box_local(p_local: Vec3, half: Vec3) -> bool:
     return abs(p_local.x) <= half.x and abs(p_local.y) <= half.y and abs(p_local.z) <= half.z
 
@@ -53,14 +64,20 @@ def _point_in_box_local(p_local: Vec3, half: Vec3) -> bool:
 def point_in_box(p: Vec3, box: Box) -> bool:
     """Whether ``p`` (world frame) falls inside ``box`` (which may be rotated).
 
-    For repeated checks against the same box (e.g. voxelizing a grid),
-    precompute ``_box_transform(box).inverse()`` once and call
-    :func:`_point_in_box_local` directly instead -- recomputing the
-    transform's inverse per point made :func:`voxelize` over 100x slower
-    than necessary (profiled during Phase 9 world generation).
+    The box's inverse transform is memoized (:func:`_box_inverse`) --
+    recomputing it per point made :func:`voxelize` over 100x slower than
+    necessary (profiled during Phase 9 world generation), and the coverage
+    raycaster hit the same cost again in Phase 13.
     """
-    half = box.half_extent
-    return _point_in_box_local(_box_transform(box).inverse().apply(p), half)
+    # Exact early-out: rotation preserves distance, so any point inside the
+    # box is within its half-diagonal of the center. The relative margin
+    # keeps a point the rotated test would accept (on a face, after float
+    # rounding) from ever being rejected here.
+    c, h = box.center, box.half_extent
+    dx, dy, dz = p.x - c.x, p.y - c.y, p.z - c.z
+    if dx * dx + dy * dy + dz * dz > (h.x * h.x + h.y * h.y + h.z * h.z) * (1.0 + 1e-9) + 1e-12:
+        return False
+    return _point_in_box_local(_box_inverse(box).apply(p), h)
 
 
 def point_in_cylinder(p: Vec3, cyl: Cylinder) -> bool:

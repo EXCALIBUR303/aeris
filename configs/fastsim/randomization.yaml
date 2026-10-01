@@ -1,0 +1,30 @@
+# FastSim per-episode domain randomization around the identified dynamics
+# (spec §51 Phase 13 task 7; §17.3 "randomization ranges set around the
+# identified values"). Loaded by LocalNavEnvConfig.identified(); setting
+# `randomization: None` in a config is the A5/H4 "randomization off" arm.
+#
+# Each range is derived from configs/fastsim/dynamics.yaml's fits, not
+# picked freely:
+#   tau_scale     pooled-xy tau CI [0.41, 0.45] s and yaw CI [0.20, 0.24] s are
+#                 ~+/-5-13% of their point fits; the range is ~2x the widest
+#                 to also cover run-to-run SITL variation the CIs (one
+#                 session) can't see.
+#   delay_extra_s pooled-xy delay CI [0.26, 0.30] s and yaw [0.10, 0.14] s are
+#                 +/-0.02 s; range is 2-3x that, skewed positive because a real
+#                 deployment only ever adds latency (compute, links) on top of
+#                 SITL's, never removes it. Clamped to [0, 0.5] s at use.
+#   accel_scale   the per-axis accel_max fits disagree (vx 3.4, vy 4.5) and the
+#                 vx CI reaches 2.4 m/s^2 = 0.6x the pooled 4.0; range covers
+#                 the lowest per-axis CI bound and the pooled CI's top (4.6 = 1.15x).
+#   depth_noise   Tier H's depth camera is noise-free (PX4's OakD-Lite
+#                 model.sdf StereoOV7251 has no <noise> element; Phase 13's
+#                 0.025 m depth parity agreed to 0.1%), so 0 is the identified value; up to 1% relative noise is a mild
+#                 robustness margin, not a fitted quantity. Sampled per reset
+#                 and batch-wide (one value across a vector env's envs).
+provenance:
+  derived_from: configs/fastsim/dynamics.yaml (bootstrap CIs, 200 resamples)
+ranges:
+  tau_scale: [0.8, 1.25]
+  delay_extra_s: [-0.04, 0.06]
+  accel_scale: [0.6, 1.2]
+  depth_noise_std_frac: [0.0, 0.01]

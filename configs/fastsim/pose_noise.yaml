@@ -1,0 +1,17 @@
+provenance:
+  dataset: results/sysid/openloop (record_tier_h.py --session openloop)
+  fitted_utc: '2026-09-30T17:49:40+00:00'
+  model: estimate = truth + random-walk drift (per 0.1 s control step) + white noise
+n_pairs_used: 66
+t_w_o_offset_xy_m:
+- -0.0066
+- 0.0297
+residual_std_xy_m:
+- 0.0178
+- 0.0222
+variogram_intercept_m2: 0.00075
+variogram_slope_m2_per_step: 6.5e-07
+identified:
+  noise_std_m: 0.0194
+  walk_step_m: 0.00081
+  yaw_noise_std_rad: 0.0301

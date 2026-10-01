@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import math
+import random
 
 from aeris.core.frames.vector import Vec3
 from aeris.simulation.worlds.occupancy import (
+    _box_transform,
+    _point_in_box_local,
     check_reachability,
     is_occupied,
     point_in_box,
@@ -130,3 +133,37 @@ def test_check_reachability_false_when_spawn_is_sealed_in() -> None:
         altitude_band_m=(0.3, 2.5),
     )
     assert not check_reachability(spec, resolution_m=0.5, min_free_fraction=0.3)
+
+
+def test_point_in_box_fast_path_matches_reference_rotation_test() -> None:
+    """The bounding-sphere early-out and memoized inverse (Phase 13 perf
+    fix) must never change an answer: compare against the original
+    rotate-then-test path on rotated boxes, including points exactly on
+    faces/corners and just past them."""
+    rng = random.Random(13)
+    for _ in range(200):
+        box = Box(
+            x=rng.uniform(-5, 5),
+            y=rng.uniform(-5, 5),
+            z=rng.uniform(0, 3),
+            size_x=rng.uniform(0.1, 3),
+            size_y=rng.uniform(0.1, 3),
+            size_z=rng.uniform(0.1, 3),
+            roll_rad=rng.uniform(-0.5, 0.5),
+            pitch_rad=rng.uniform(-0.5, 0.5),
+            yaw_rad=rng.uniform(-3.1, 3.1),
+        )
+        t = _box_transform(box)
+        h = box.half_extent
+        interior = [Vec3(*(rng.uniform(-1.5, 1.5) * e for e in (h.x, h.y, h.z))) for _ in range(20)]
+        corners = [
+            Vec3(sx * h.x * k, sy * h.y * k, sz * h.z * k)
+            for sx in (-1, 1)
+            for sy in (-1, 1)
+            for sz in (-1, 1)
+            for k in (1.0, 1.0 + 1e-12, 1.001)
+        ]
+        local_pts = interior + corners
+        for pl in local_pts:
+            p = t.apply(pl)
+            assert point_in_box(p, box) == _point_in_box_local(t.inverse().apply(p), h)

@@ -45,6 +45,12 @@ sim = [
     # untracked package. Declaring it here is the actual fix.
     "protobuf>=5.0",
 ]
+# aeris.learning envs/spaces only (Phase 13): FastSim + the Gymnasium envs
+# need gymnasium but not torch, so CI installs this instead of `learn` and
+# skips multi-GB torch wheels until a phase actually trains something.
+gym = [
+    "gymnasium>=1.0",
+]
 # aeris.learning deps (Phase 13+)
 learn = [
     "torch>=2.14",
@@ -211,13 +217,21 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "groundtruth is privileged: autonomy/perception/mapping/localization must not import it (spec §17.4, §14.3 contract 1)"
+name = "groundtruth is privileged: autonomy/perception/mapping/localization/learning must not import it (spec §17.4, §14.3 contract 1)"
 type = "forbidden"
-source_modules = ["aeris.autonomy", "aeris.perception", "aeris.mapping", "aeris.localization"]
+source_modules = ["aeris.autonomy", "aeris.perception", "aeris.mapping", "aeris.localization", "aeris.learning"]
 forbidden_modules = ["aeris.simulation.groundtruth"]
-# Widened to aeris.mapping/aeris.localization in Phase 11 (this is when
-# those packages first exist to check); aeris.learning still to come in
-# Phase 13.
+# Widened to aeris.mapping/aeris.localization in Phase 11 and aeris.learning
+# in Phase 13 (each when the package first exists to check).
+
+[[tool.importlinter.contracts]]
+name = "learning.spaces is deployment-shared: no simulator, no training envs (spec §27.6)"
+type = "forbidden"
+source_modules = ["aeris.learning.spaces"]
+forbidden_modules = ["aeris.simulation", "aeris.learning.envs"]
+# ObservationBuilder/ActionDecoder must run unchanged on a real vehicle's
+# data (Tier H deployment); importing FastSim (or anything simulation-side)
+# would make that impossible, and a GT leak easy. Phase 13 leakage audit.
 
 [[tool.importlinter.contracts]]
 name = "gz.*/rclpy are confined to the Sensor Bridge process (spec §14.3 contract 5)"
