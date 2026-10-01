@@ -5,6 +5,7 @@ single source of provenance every later comparison depends on.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import platform
 import subprocess
@@ -68,6 +69,11 @@ def software_versions() -> dict[str, str]:
         versions["pymavlink"] = getattr(pymavlink, "__version__", "unknown")
     except ImportError:
         pass
+    from importlib.metadata import PackageNotFoundError, version
+
+    for pkg in ("torch", "numpy", "gymnasium"):  # Phase 14: first phase to train with them
+        with contextlib.suppress(PackageNotFoundError):
+            versions[pkg] = version(pkg)
     return versions
 
 

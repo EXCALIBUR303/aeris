@@ -1,0 +1,18 @@
+# Known-answer memory task (spec §27.4 #7c): solvable only with the GRU.
+extends: ppo_base.yaml
+name: ppo_toy_memory_gru
+budget: smoke
+total_steps: 60000
+env:
+  id: toy_memory
+  num_envs: 16
+network:
+  trunk_sizes: [64]
+  recurrent: true
+  hidden_size: 64
+ppo:
+  num_steps: 32
+  ent_coef: 0.01
+eval:
+  episodes: 400
+  num_envs: 16

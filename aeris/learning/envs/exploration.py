@@ -166,7 +166,8 @@ class ExplorationEnv(gym.Env[dict[str, np.ndarray], int]):
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
         super().reset(seed=seed)
-        self._rng = np.random.default_rng(seed)
+        if seed is not None:  # unseeded resets keep drawing from the env's own stream (D0)
+            self._rng = np.random.default_rng(seed)
         opts = options or {}
         w = int(opts.get("world_index", self._rng.integers(len(self.worlds))))
         world = self.bank.worlds[w]
@@ -420,3 +421,70 @@ class ExplorationEnv(gym.Env[dict[str, np.ndarray], int]):
         info = self._info()
         info.update(decision=res)
         return self._observe(), float(reward), terminated, truncated, info
+
+
+class ExplorationVectorEnv:
+    """``num_envs`` independent :class:`ExplorationEnv` instances behind the
+    batched, same-step-autoreset contract the trainer uses (same as
+    :class:`~aeris.learning.envs.local_nav.LocalNavVectorEnv`): batched dict
+    observations, ``info["final_obs"]`` holding pre-reset observations,
+    ``info["action_mask"]`` for the *next* decision, ``info["success"]``
+    always False (exploration has no success terminal)."""
+
+    metadata = {"autoreset_mode": gym.vector.AutoresetMode.SAME_STEP}  # noqa: RUF012
+
+    def __init__(
+        self,
+        worlds: Sequence[WorldSpec],
+        *,
+        num_envs: int,
+        config: ExplorationEnvConfig | None = None,
+        split_mode: SplitMode = "train",
+        seed: int = 0,
+    ) -> None:
+        self.num_envs = num_envs
+        self.envs = [
+            ExplorationEnv(worlds, config=config, split_mode=split_mode) for _ in range(num_envs)
+        ]
+        self.obs_spec = self.envs[0].obs_spec
+        self.reward_version = self.envs[0].reward_version
+        self.privileged_reward_notes = self.envs[0].privileged_reward_notes
+        self.single_observation_space = self.envs[0].observation_space
+        self.single_action_space = self.envs[0].action_space
+        self._seed = seed
+
+    @staticmethod
+    def _stack(obs: Sequence[dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
+        return {k: np.stack([o[k] for o in obs]) for k in obs[0]}
+
+    def reset(
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
+        base = self._seed if seed is None else seed
+        out = [env.reset(seed=base + i) for i, env in enumerate(self.envs)]
+        return self._stack([o for o, _ in out]), {
+            "action_mask": np.stack([i["action_mask"] for _, i in out])
+        }
+
+    def step(
+        self, actions: np.ndarray
+    ) -> tuple[dict[str, np.ndarray], np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
+        obs, finals, masks = [], [], []
+        rew = np.zeros(self.num_envs, dtype=np.float32)
+        term = np.zeros(self.num_envs, dtype=np.bool_)
+        trunc = np.zeros(self.num_envs, dtype=np.bool_)
+        for i, env in enumerate(self.envs):
+            o, r, te, tr, info = env.step(int(actions[i]))
+            rew[i], term[i], trunc[i] = r, te, tr
+            finals.append(o)
+            if te or tr:
+                o, info = env.reset()
+            obs.append(o)
+            masks.append(info["action_mask"])
+        out: dict[str, Any] = {
+            "action_mask": np.stack(masks),
+            "success": np.zeros(self.num_envs, dtype=np.bool_),
+        }
+        if (term | trunc).any():
+            out["final_obs"] = self._stack(finals)
+        return self._stack(obs), rew, term, trunc, out

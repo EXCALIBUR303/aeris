@@ -389,6 +389,9 @@ class LocalNavVectorEnv(VectorEnv[dict[str, np.ndarray], np.ndarray, np.ndarray]
         self.core = LocalNavCore(
             self._worlds, num_envs=num_envs, config=config, split_mode=split_mode, seed=seed
         )
+        self.obs_spec = self.core.spec
+        self.reward_version = LOCAL_NAV_REWARD_VERSION
+        self.privileged_reward_notes = PRIVILEGED_REWARD_NOTES
         self.single_observation_space = self.core.spec.gym_space()
         self.single_action_space = spaces.Box(-1.0, 1.0, shape=(3,), dtype=np.float32)
         self.observation_space = gym.vector.utils.batch_space(

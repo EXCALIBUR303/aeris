@@ -1,0 +1,40 @@
+# Spec §27.2 PPO defaults, shared by every PPO config via `extends:`.
+# Change a default here only with a reason recorded in the commit/report.
+seed: 0
+# Phase 14 device benchmark (results/learning/device_benchmark.json): MPS is
+# ~4x faster for image-observation tasks (depth/map CNNs), CPU ~6x faster for
+# small low-dimensional nets. CPU stays the base default because only CPU
+# training is bitwise reproducible (spec §40 D0 vs D2); task configs that
+# train CNNs at DEV/FULL budget opt into mps explicitly.
+device: cpu
+checkpoint_every_updates: 0
+network:
+  image_dim: 256
+  vector_dim: 64
+  trunk_sizes: [256]
+  recurrent: false
+  hidden_size: 256
+  log_std_init: -0.5
+ppo:
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  num_steps: 128
+  num_minibatches: 4
+  update_epochs: 4
+  learning_rate: 3.0e-4
+  adam_eps: 1.0e-5
+  anneal_lr: true
+  max_grad_norm: 0.5
+  vf_coef: 0.5
+  ent_coef: 0.0
+  clip_value_loss: false
+  normalize_advantages: true
+  target_kl: 0.02
+  kl_early_stop: false
+  normalize_obs: true
+  scale_rewards: false
+eval:
+  episodes: 32
+  every_updates: 0
+  num_envs: 8

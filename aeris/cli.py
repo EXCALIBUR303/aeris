@@ -187,6 +187,26 @@ def _cmd_worlds_generate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_train(args: argparse.Namespace) -> int:
+    # Lazy: torch (the "learn" extra) is only needed for this command.
+    from aeris.core.errors import NonFiniteTrainingError
+    from aeris.learning.ppo.run import run_training
+
+    try:
+        run_dir = run_training(
+            args.config,
+            tuple(args.set or ()),
+            run_dir=Path(args.run_dir) if args.run_dir else None,
+            resume=Path(args.resume) if args.resume else None,
+            max_updates=args.max_updates,
+        )
+    except NonFiniteTrainingError as exc:
+        print(f"training halted by the NaN guard: {exc}", file=sys.stderr)
+        return 2
+    print(f"run directory: {run_dir}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aeris")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -256,6 +276,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output directory (default: results/worlds)",
     )
     worlds_generate.set_defaults(func=_cmd_worlds_generate)
+
+    train = subparsers.add_parser("train", help="Train a PPO policy (spec §27, Phase 14)")
+    train.add_argument(
+        "--config", required=True, help="Config name under configs/learning/ or a YAML path"
+    )
+    train.add_argument(
+        "--set", action="append", metavar="KEY=VALUE", help="Config override (repeatable)"
+    )
+    train.add_argument("--resume", help="Checkpoint (.pt) to resume from")
+    train.add_argument("--run-dir", help="Run directory (default: results/runs/<id>)")
+    train.add_argument("--max-updates", type=int, help="Stop after this many more updates")
+    train.set_defaults(func=_cmd_train)
 
     return parser
 

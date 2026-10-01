@@ -25,9 +25,10 @@ jobs:
         # logic (ports/profiles/params parsing, etc.) imports pymavlink at
         # module scope, so importing those modules at all — not just
         # running the sim-marked live-PX4 tests — needs it installed.
-        # --extra gym: aeris.learning's FastSim envs (Phase 13) need
-        # gymnasium; `learn` would also pull torch, which nothing uses yet.
-        run: uv sync --extra dev --extra sim --extra gym
+        # --extra learn: aeris.learning (FastSim envs, Phase 13; PPO, Phase 14)
+        # needs gymnasium + torch. On this macos-15 (arm64) runner torch is
+        # a CPU/MPS wheel of well under 100 MB.
+        run: uv sync --extra dev --extra sim --extra learn
 
       - name: ruff check
         run: uv run ruff check .

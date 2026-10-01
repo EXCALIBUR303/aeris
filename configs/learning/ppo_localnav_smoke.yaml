@@ -1,0 +1,17 @@
+# SMOKE (< 5 min, spec §38.1): local navigation in FastSim, end to end:
+# rollout -> GAE -> update -> eval on val worlds -> checkpoint. Proves the
+# pipeline runs; it is far too short to learn the task (that is Phase 15).
+extends: ppo_base.yaml
+name: ppo_localnav_smoke
+budget: smoke
+total_steps: 8192  # 4 updates of 16 envs x 128 steps
+checkpoint_every_updates: 2
+env:
+  id: local_nav
+  num_envs: 16
+  families: [f1_rubble, f2_office, f3_warehouse]
+  worlds_per_family: 1
+  eval_worlds_per_family: 1
+eval:
+  episodes: 16
+  num_envs: 8

@@ -1,0 +1,18 @@
+# DEV (spec §27.7: 2 M steps, MLP). The Phase 15 starting point; not run in Phase 14.
+extends: ppo_base.yaml
+name: ppo_localnav_dev
+budget: dev
+# Depth-CNN task: ~4x faster on MPS (Phase 14 benchmark); MPS runs are D2
+# (not bitwise reproducible) -- falls back to CPU automatically if unavailable.
+device: mps
+total_steps: 2000000
+checkpoint_every_updates: 50
+env:
+  id: local_nav
+  num_envs: 32
+  worlds_per_family: 8
+  eval_worlds_per_family: 2
+eval:
+  episodes: 64
+  every_updates: 50
+  num_envs: 16

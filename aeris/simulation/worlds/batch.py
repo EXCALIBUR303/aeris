@@ -56,11 +56,7 @@ def generate_batch(
 
     written: list[Path] = []
     for seed in seeds:
-        if family is not WorldFamily.COLLAPSED:
-            validate_seed_for_split(seed, split)
-            spec = _GENERATORS[family](seed, split)
-        else:
-            spec = collapsed.generate(seed)
+        spec = generate_world(family, split, seed)
 
         json_path = dest / f"{spec.name}.json"
         json_path.write_text(spec.model_dump_json(indent=2))
@@ -70,6 +66,14 @@ def generate_batch(
             (dest / f"{spec.name}.sdf").write_text(sdf.render(spec))
 
     return written
+
+
+def generate_world(family: WorldFamily, split: WorldSplit, seed: int) -> WorldSpec:
+    """One world, in memory (no files) -- the seed must belong to ``split``."""
+    if family is WorldFamily.COLLAPSED:
+        return collapsed.generate(seed)
+    validate_seed_for_split(seed, split)
+    return _GENERATORS[family](seed, split)
 
 
 def load_world_spec(path: Path) -> WorldSpec:

@@ -45,12 +45,6 @@ sim = [
     # untracked package. Declaring it here is the actual fix.
     "protobuf>=5.0",
 ]
-# aeris.learning envs/spaces only (Phase 13): FastSim + the Gymnasium envs
-# need gymnasium but not torch, so CI installs this instead of `learn` and
-# skips multi-GB torch wheels until a phase actually trains something.
-gym = [
-    "gymnasium>=1.0",
-]
 # aeris.learning deps (Phase 13+)
 learn = [
     "torch>=2.14",
@@ -128,10 +122,18 @@ plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 # Spec §14.2: strict on aeris.core, aeris.vehicle, aeris.safety,
-# aeris.learning.ppo (doesn't exist yet), aeris.evaluation.
+# aeris.learning.ppo, aeris.evaluation.
 # aeris.vehicle was missed here in Phase 4 -- added then. aeris.evaluation
-# added now that Phase 7 creates it.
-module = ["aeris.core.*", "aeris.vehicle.*", "aeris.safety.*", "aeris.evaluation.*"]
+# added now that Phase 7 creates it. aeris.learning.ppo (+ the networks it
+# trains) added in Phase 14, which creates them.
+module = [
+    "aeris.core.*",
+    "aeris.vehicle.*",
+    "aeris.safety.*",
+    "aeris.evaluation.*",
+    "aeris.learning.ppo.*",
+    "aeris.learning.networks.*",
+]
 strict = true
 
 [[tool.mypy.overrides]]
@@ -142,6 +144,12 @@ strict = true
 # -- so it doesn't need an override here even though the "sim" extra still
 # installs it, for re-testing the segfault against future releases.)
 module = ["pymavlink.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Dev-only reference (spec §27.1), run via `uv run --with stable-baselines3`;
+# deliberately not a project dependency, so absent when mypy runs.
+module = ["stable_baselines3.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -232,6 +240,23 @@ forbidden_modules = ["aeris.simulation", "aeris.learning.envs"]
 # ObservationBuilder/ActionDecoder must run unchanged on a real vehicle's
 # data (Tier H deployment); importing FastSim (or anything simulation-side)
 # would make that impossible, and a GT leak easy. Phase 13 leakage audit.
+
+[[tool.importlinter.contracts]]
+name = "torch is confined to aeris.learning (spec §27): safety, vehicle, simulation, mapping, autonomy, evaluation stay torch-free"
+type = "forbidden"
+source_modules = [
+    "aeris.core",
+    "aeris.safety",
+    "aeris.vehicle",
+    "aeris.simulation",
+    "aeris.mapping",
+    "aeris.localization",
+    "aeris.autonomy",
+    "aeris.evaluation",
+    "aeris.experiments",
+    "aeris.learning.spaces",
+]
+forbidden_modules = ["torch"]
 
 [[tool.importlinter.contracts]]
 name = "gz.*/rclpy are confined to the Sensor Bridge process (spec §14.3 contract 5)"

@@ -24,9 +24,6 @@ dev = [
     { name = "ruff" },
     { name = "types-pyyaml" },
 ]
-gym = [
-    { name = "gymnasium" },
-]
 learn = [
     { name = "gymnasium" },
     { name = "numba" },
@@ -51,7 +48,6 @@ sim = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.115" },
-    { name = "gymnasium", marker = "extra == 'gym'", specifier = ">=1.0" },
     { name = "gymnasium", marker = "extra == 'learn'", specifier = ">=1.0" },
     { name = "import-linter", marker = "extra == 'dev'", specifier = ">=2.1" },
     { name = "mavsdk", marker = "extra == 'sim'", specifier = ">=4.0.0" },
@@ -78,7 +74,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.32" },
     { name = "websockets", marker = "extra == 'server'", specifier = ">=13.1" },
 ]
-provides-extras = ["sim", "gym", "learn", "server", "dev"]
+provides-extras = ["sim", "learn", "server", "dev"]
 
 [[package]]
 name = "annotated-doc"

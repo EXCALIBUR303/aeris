@@ -1,0 +1,21 @@
+# SMOKE: decision-level exploration (25-way masked categorical) end to end.
+# Each decision is ~10-450 low-level FastSim ticks, so this is small on purpose.
+extends: ppo_base.yaml
+name: ppo_exploration_smoke
+budget: smoke
+total_steps: 64  # 2 updates of 4 envs x 8 decisions
+env:
+  id: exploration
+  num_envs: 4
+  families: [f2_office]
+  worlds_per_family: 1
+  eval_worlds_per_family: 1
+network:
+  recurrent: true
+ppo:
+  num_steps: 8
+  num_minibatches: 2
+  ent_coef: 0.01
+eval:
+  episodes: 2
+  num_envs: 2

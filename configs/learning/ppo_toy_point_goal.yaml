@@ -1,0 +1,15 @@
+# Known-answer task (spec §27.4 #7b) and the SB3 reference comparison's task.
+extends: ppo_base.yaml
+name: ppo_toy_point_goal
+budget: smoke
+total_steps: 200000
+env:
+  id: toy_point_goal_1d
+  num_envs: 16
+network:
+  trunk_sizes: [64]
+ppo:
+  num_steps: 32
+eval:
+  episodes: 400
+  num_envs: 16

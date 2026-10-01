@@ -134,3 +134,27 @@ class SplitViolationError(ExperimentError):
     Spec §33.2: "The training entry point refuses to generate worlds from
     val/test ranges. The tuning entry point refuses test ranges."
     """
+
+
+# --- Learning (spec §27) -------------------------------------------------------
+
+
+class LearningError(AerisError):
+    """Base class for RL training/checkpoint errors."""
+
+
+class NonFiniteTrainingError(LearningError):
+    """A loss, gradient or parameter went NaN/inf during a PPO update.
+
+    Spec §27.4 #10: the NaN guard trips and the trainer halts with
+    diagnostics instead of silently continuing on corrupted weights.
+    ``diagnostics`` holds what was non-finite and the update's state."""
+
+    def __init__(self, message: str, diagnostics: dict[str, object]) -> None:
+        super().__init__(message)
+        self.diagnostics = diagnostics
+
+
+class CheckpointMismatchError(LearningError):
+    """A checkpoint doesn't match what is loading it (observation-spec hash,
+    action space, or architecture) -- spec §27.6: refuse, never adapt."""
