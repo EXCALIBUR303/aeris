@@ -1,12 +1,14 @@
 "use client";
-import { useEffect, useId, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import {
   AnimatePresence,
   MotionConfig,
-  motion,
+  m,
+  LazyMotion,
   useReducedMotion,
+  useSpring,
+  useTransform,
 } from "motion/react";
-import { Command } from "cmdk";
 import {
   Activity,
   ArrowDownToLine,
@@ -40,6 +42,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import { ShowcaseBoundary } from "./boundary";
 import { StoreProvider, useAeris, type View } from "./store";
 import {
   formatTime,
@@ -51,16 +54,24 @@ import {
   type Scenario,
 } from "./data";
 import { Button } from "./ui/button";
-import { Modal } from "./ui/dialog";
 import s from "./showcase.module.css";
+
+const loadMotionFeatures = () =>
+  import("./motion-features").then((module) => module.default);
+const CommandPalette = lazy(() => import("./command-palette"));
+const HelpDialog = lazy(() => import("./help-dialog"));
 
 export function AerisShowcase({ demo = true }: { demo?: boolean }) {
   return (
-    <StoreProvider>
-      <MotionConfig reducedMotion="user">
-        <Experience demo={demo} />
-      </MotionConfig>
-    </StoreProvider>
+    <ShowcaseBoundary>
+      <StoreProvider>
+        <LazyMotion features={loadMotionFeatures}>
+          <MotionConfig reducedMotion="user">
+            <Experience demo={demo} />
+          </MotionConfig>
+        </LazyMotion>
+      </StoreProvider>
+    </ShowcaseBoundary>
   );
 }
 function Experience({ demo }: { demo: boolean }) {
@@ -163,7 +174,7 @@ function Experience({ demo }: { demo: boolean }) {
         <a
           className={s.brand}
           href={`#${contentId}`}
-          aria-label="AERIS mission control"
+          aria-label="AERIS Autonomy Lab"
         >
           <span className={s.brandMark}>
             <Triangle size={25} strokeWidth={1.6} />
@@ -184,7 +195,7 @@ function Experience({ demo }: { demo: boolean }) {
             className={s.commandTrigger}
             variant="ghost"
             onClick={() => setPalette(true)}
-            aria-label="Open command palette"
+            aria-label="Quick actions: open command palette"
           >
             <Search size={16} />
             <span>Quick actions</span>
@@ -223,10 +234,7 @@ function Experience({ demo }: { demo: boolean }) {
                 <t.icon size={17} />
                 {t.label}
                 {a.view === t.id && (
-                  <motion.span
-                    layoutId="nav-active"
-                    className={s.navIndicator}
-                  />
+                  <m.span layoutId="nav-active" className={s.navIndicator} />
                 )}
               </button>
             ))}
@@ -328,7 +336,7 @@ function Experience({ demo }: { demo: boolean }) {
             </div>
           ) : (
             <AnimatePresence mode="wait">
-              <motion.div
+              <m.div
                 key={a.view}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -337,7 +345,13 @@ function Experience({ demo }: { demo: boolean }) {
               >
                 {a.view === "mission" ? (
                   <>
-                    <section
+                    <m.section
+                      initial="hidden"
+                      animate="show"
+                      variants={{
+                        hidden: {},
+                        show: { transition: { staggerChildren: 0.055 } },
+                      }}
                       className={s.metrics}
                       aria-label="Mission telemetry"
                     >
@@ -379,7 +393,7 @@ function Experience({ demo }: { demo: boolean }) {
                         caption={`of ${formatTime(scenario.duration)} recorded`}
                         values={[]}
                       />
-                    </section>
+                    </m.section>
                     <div className={s.missionGrid}>
                       <section className={s.mapPanel} aria-label="Mission map">
                         <div className={s.panelHeader}>
@@ -431,8 +445,7 @@ function Experience({ demo }: { demo: boolean }) {
                           THE BIGGER PICTURE
                         </div>
                         <h2>
-                          A path becomes
-                          <br />
+                          A path becomes <br />
                           an understanding.
                         </h2>
                         <p>
@@ -460,7 +473,7 @@ function Experience({ demo }: { demo: boolean }) {
                     }}
                   />
                 )}
-              </motion.div>
+              </m.div>
             </AnimatePresence>
           )}
           <footer className={s.footer}>
@@ -473,133 +486,27 @@ function Experience({ demo }: { demo: boolean }) {
           </footer>
         </main>
       </div>
-      <Modal
-        open={palette}
-        onOpenChange={setPalette}
-        title="Mission command center"
-        description="Navigate the showcase. Nothing here controls a vehicle."
-        theme={a.theme}
-      >
-        <Command className={s.command}>
-          <Command.Input
-            placeholder="Search views, worlds, actions…"
-            aria-label="Search commands"
+      <Suspense fallback={null}>
+        {palette && (
+          <CommandPalette
+            open={palette}
+            onOpenChange={setPalette}
+            theme={a.theme}
+            demo={demo}
+            onView={a.setView}
+            onScenario={selectScenario}
+            onToggle={a.toggle}
+            onTheme={() => a.setTheme(a.theme === "light" ? "dark" : "light")}
+            onExport={download}
           />
-          <Command.List>
-            <Command.Empty>
-              No matching actions. Try “warehouse” or “theme”.
-            </Command.Empty>
-            <Command.Group heading="Workspace">
-              {tabs.map((t) => (
-                <Command.Item
-                  key={t.id}
-                  onSelect={() => {
-                    a.setView(t.id);
-                    setPalette(false);
-                  }}
-                >
-                  <t.icon size={16} />
-                  {t.label}
-                  <ArrowUpRight size={14} />
-                </Command.Item>
-              ))}
-            </Command.Group>
-            <Command.Group heading="Explore">
-              {scenarios.map((v) => (
-                <Command.Item
-                  key={v.id}
-                  onSelect={() => {
-                    selectScenario(v.id);
-                    a.setView("mission");
-                    setPalette(false);
-                  }}
-                >
-                  <Map size={16} />
-                  {v.name}
-                </Command.Item>
-              ))}
-            </Command.Group>
-            <Command.Group heading="Actions">
-              <Command.Item
-                disabled={!demo}
-                onSelect={() => {
-                  a.toggle();
-                  setPalette(false);
-                }}
-              >
-                <Play size={16} />
-                Play or pause replay
-              </Command.Item>
-              <Command.Item
-                onSelect={() => {
-                  a.setTheme(a.theme === "light" ? "dark" : "light");
-                  setPalette(false);
-                }}
-              >
-                <Sun size={16} />
-                Toggle theme
-              </Command.Item>
-              <Command.Item
-                disabled={!demo}
-                onSelect={() => {
-                  download();
-                  setPalette(false);
-                }}
-              >
-                <ArrowDownToLine size={16} />
-                Export snapshot
-              </Command.Item>
-            </Command.Group>
-          </Command.List>
-        </Command>
-      </Modal>
-      <Modal
-        open={help}
-        onOpenChange={setHelp}
-        title="A little context. A lot to explore."
-        description="AERIS is an autonomous drone research platform. This standalone showcase explains a mission without connecting to a vehicle."
-        theme={a.theme}
-      >
-        <div className={s.guide}>
-          <h3>Try your first mission</h3>
-          <ol>
-            <li>Choose a world in the sidebar or map menu.</li>
-            <li>
-              Play or scrub the replay. The map, metrics and events share one
-              clock.
-            </li>
-            <li>
-              Select an inspection point to jump to its event; compare worlds in
-              Analytics.
-            </li>
-          </ol>
-          <h3>Honest by design</h3>
-          <p>
-            All paths, telemetry and inspection annotations are seeded synthetic
-            examples. Coverage counts visited free grid cells within an
-            illustrative 8.3 m sensing radius. Battery is a simple
-            distance-based model. This is neither a FastSim evaluation nor
-            evidence of target detection or autonomous performance.
-          </p>
-          <div className={s.shortcuts}>
-            <span>
-              Play / pause <kbd>Space</kbd>
-            </span>
-            <span>
-              Seek 10 seconds <kbd>← / →</kbd>
-            </span>
-            <span>
-              Quick actions <kbd>⌘ / Ctrl K</kbd>
-            </span>
-            <span>
-              Open this guide <kbd>?</kbd>
-            </span>
-          </div>
-        </div>
-      </Modal>
+        )}
+        {help && (
+          <HelpDialog open={help} onOpenChange={setHelp} theme={a.theme} />
+        )}
+      </Suspense>
       <AnimatePresence>
         {notice && (
-          <motion.div
+          <m.div
             className={s.toast}
             role="status"
             initial={{ opacity: 0, y: 16 }}
@@ -614,7 +521,7 @@ function Experience({ demo }: { demo: boolean }) {
             >
               <X size={14} />
             </button>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>
@@ -636,24 +543,34 @@ function Metric({
   values: number[];
 }) {
   return (
-    <div className={s.metric}>
+    <m.div className={s.metric} variants={{ hidden: { y: 8 }, show: { y: 0 } }}>
       <div className={s.metricLabel}>
         {label}
         <Icon size={16} />
       </div>
       <div className={s.metricValue}>
-        <motion.span
-          key={value}
-          initial={{ opacity: 0.6 }}
-          animate={{ opacity: 1 }}
-        >
-          {value}
-        </motion.span>
+        {unit ? <AnimatedNumber value={value} /> : <span>{value}</span>}
         <span>{unit}</span>
         {values.length > 1 && <Sparkline values={values} />}
       </div>
       <small>{caption}</small>
-    </div>
+    </m.div>
+  );
+}
+function AnimatedNumber({ value }: { value: string }) {
+  const reduced = useReducedMotion();
+  const spring = useSpring(Number(value), { stiffness: 180, damping: 28 });
+  const digits = value.includes(".") ? value.split(".")[1].length : 0;
+  const display = useTransform(spring, (n) => n.toFixed(digits));
+  useEffect(() => {
+    if (reduced) spring.jump(Number(value));
+    else spring.set(Number(value));
+  }, [spring, value, reduced]);
+  return (
+    <span>
+      <m.span aria-hidden="true">{display}</m.span>
+      <span className={s.srOnly}>{value}</span>
+    </span>
   );
 }
 function Sparkline({ values }: { values: number[] }) {
@@ -871,7 +788,7 @@ function MissionMap({ scenario, frame }: { scenario: Scenario; frame: Frame }) {
                 opacity=".2"
                 strokeDasharray="3 4"
               />
-              <motion.circle
+              <m.circle
                 cx={p.x}
                 cy={p.y}
                 r="30"
@@ -1142,7 +1059,7 @@ function MissionDetails({
             className={s.objective}
             key={v.name}
             onClick={() => a.seek(v.time)}
-            aria-label={`Jump to ${v.name}`}
+            title={`Jump to ${v.name}`}
           >
             <span
               className={
@@ -1183,7 +1100,7 @@ function MissionDetails({
           {events.length ? (
             <AnimatePresence initial={false}>
               {events.slice(0, 4).map((e) => (
-                <motion.button
+                <m.button
                   layout
                   key={e.time}
                   initial={{ opacity: 0, x: 8 }}
@@ -1202,7 +1119,7 @@ function MissionDetails({
                     <small>{e.detail}</small>
                   </span>
                   <time>{formatTime(e.time)}</time>
-                </motion.button>
+                </m.button>
               ))}
             </AnimatePresence>
           ) : (
@@ -1293,7 +1210,7 @@ function Telemetry({ scenario }: { scenario: Scenario }) {
             fill="var(--scan)"
             opacity=".22"
           />
-          <motion.polyline
+          <m.polyline
             initial={{ pathLength: 0 }}
             animate={{ pathLength: 1 }}
             transition={{ duration: 0.6 }}
@@ -1343,19 +1260,26 @@ function Telemetry({ scenario }: { scenario: Scenario }) {
   );
 }
 function Analytics({ scenario }: { scenario: Scenario }) {
+  const time = useAeris((v) => v.time);
   return (
     <div className={s.analytics}>
-      <Telemetry scenario={scenario} />
+      <div className={s.mapPanel}>
+        <Telemetry scenario={scenario} />
+        <Timeline scenario={scenario} />
+      </div>
       <section className={s.compare}>
         <div className={s.panelHeader}>
           <div>
             <h2>Worlds, side by side.</h2>
-            <p>Final illustrative coverage · same 4-minute route budget</p>
+            <p>
+              Explored area at {formatTime(time)} · identical replay route
+              budget
+            </p>
           </div>
           <FlaskConical size={20} />
         </div>
         {scenarios.map((v) => {
-          const f = recordings[v.id].at(-1)!;
+          const f = recordings[v.id][Math.floor(time)];
           return (
             <div className={s.comparisonRow} key={v.id}>
               <span>
@@ -1365,7 +1289,7 @@ function Analytics({ scenario }: { scenario: Scenario }) {
                 </small>
               </span>
               <div className={s.barTrack}>
-                <motion.div
+                <m.div
                   initial={{ width: 0 }}
                   animate={{ width: `${f.coverage}%` }}
                   transition={{ duration: 0.6 }}
@@ -1416,7 +1340,7 @@ function Library({ onSelect }: { onSelect: (id: string) => void }) {
       {filtered.length ? (
         <div className={s.worldGrid}>
           {filtered.map((v, i) => (
-            <motion.button
+            <m.button
               layout
               className={s.worldCard}
               key={v.id}
@@ -1472,7 +1396,7 @@ function Library({ onSelect }: { onSelect: (id: string) => void }) {
                   </span>
                 </div>
               </div>
-            </motion.button>
+            </m.button>
           ))}
         </div>
       ) : (
