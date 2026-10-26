@@ -153,24 +153,31 @@ export function generateFrames(s: Scenario): Frame[] {
         )
       )
         cells.push({ x, y });
-  const seen = new Set<number>();
+  const seen = new Uint8Array(cells.length);
+  let seenCount = 0;
   let distance = 0;
+  let previous = s.route[0];
   return Array.from({ length: s.duration + 1 }, (_, time) => {
     const p = positionAt(s, time);
-    if (time) distance += length(positionAt(s, time - 1), p) / 10;
+    const stepDistance = time ? length(previous, p) / 10 : 0;
+    distance += stepDistance;
+    previous = p;
     cells.forEach((c, i) => {
-      if (length(c, p) <= 83) seen.add(i);
+      if (seen[i]) return;
+      const dx = c.x - p.x,
+        dy = c.y - p.y;
+      if (dx * dx + dy * dy <= 83 * 83) {
+        seen[i] = 1;
+        seenCount++;
+      }
     });
     return {
       ...p,
       time,
       distance,
-      coverage: (seen.size / cells.length) * 100,
+      coverage: (seenCount / cells.length) * 100,
       battery: 100 - distance * 0.075,
-      speed:
-        time === 0 || time === s.duration
-          ? 0
-          : length(positionAt(s, time - 1), p) / 10,
+      speed: time === 0 || time === s.duration ? 0 : stepDistance,
       altitude: time === 0 ? 0 : 2.4 + Math.sin(time / 18) * 0.04,
     };
   });

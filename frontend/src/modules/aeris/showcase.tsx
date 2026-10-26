@@ -56,8 +56,20 @@ import {
 import { Button } from "./ui/button";
 import s from "./showcase.module.css";
 
+// The initial screen is fully server-rendered. Animation/layout features are
+// progressive enhancement and are fetched on the first real interaction.
 const loadMotionFeatures = () =>
-  import("./motion-features").then((module) => module.default);
+  new Promise<typeof import("./motion-features").default>((resolve) => {
+    const load = () => {
+      window.removeEventListener("pointerdown", load);
+      window.removeEventListener("keydown", load);
+      void import("./motion-features").then((module) =>
+        resolve(module.default),
+      );
+    };
+    window.addEventListener("pointerdown", load, { once: true, passive: true });
+    window.addEventListener("keydown", load, { once: true });
+  });
 const CommandPalette = lazy(() => import("./command-palette"));
 const HelpDialog = lazy(() => import("./help-dialog"));
 
@@ -338,7 +350,7 @@ function Experience({ demo }: { demo: boolean }) {
             <AnimatePresence mode="wait">
               <m.div
                 key={a.view}
-                initial={{ opacity: 0, y: 8 }}
+                initial={false}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.18 }}
