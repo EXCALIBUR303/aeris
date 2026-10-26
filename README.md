@@ -17,16 +17,31 @@ Read that before reading (or changing) anything else.
 AERIS is built phase by phase (0–34), each with a written report and an
 explicit validation gate — see `docs/phase_reports/`. Current status:
 
-| Level | Capability | Status |
-|---|---|---|
-| — | Architecture specified (Phase 0) | ✅ [phase-0.md](docs/phase_reports/phase-0.md) |
-| — | Mac / PX4 / Gazebo compatibility proven (Phase 1) | ✅ [phase-1.md](docs/phase_reports/phase-1.md) |
-| — | Repository + tooling foundation (Phase 2) | 🔄 in progress |
-| L0 | PX4 SITL smoke test | not yet (Phase 3) |
-| L1–L16 | see spec §2.1 | not yet |
+| Level | Capability                                        | Status                                                           |
+| ----- | ------------------------------------------------- | ---------------------------------------------------------------- |
+| —     | Architecture specified (Phase 0)                  | ✅ [phase-0.md](docs/phase_reports/phase-0.md)                   |
+| —     | Mac / PX4 / Gazebo compatibility proven (Phase 1) | ✅ [phase-1.md](docs/phase_reports/phase-1.md)                   |
+| —     | Python research runtime through Phase 14          | See [phase reports](docs/phase_reports/) for validation evidence |
+| —     | Portfolio web showcase                            | Interactive synthetic demo in [`frontend/`](frontend/)           |
+| —     | Connected Control Center / server                 | Still planned; no live API implemented                           |
 
-No autonomy level has been reached yet — Phase 2 only builds the package
-skeleton and tooling; there is no autonomy code to run.
+The research runtime includes vehicle/safety, mapping, exploration, FastSim and PPO.
+Read each phase report for the exact validated capabilities and limitations;
+the portfolio showcase is illustrative and does not add autonomy claims.
+
+## Interactive portfolio showcase
+
+![AERIS mission workspace](frontend/public/screenshots/mission-1440.png)
+
+The standalone **Next.js + TypeScript + Motion** experience in [`frontend/`](frontend/README.md) offers seeded mission playback, linked map/telemetry/events, analytics, themes, command palette and JSON export. It runs without Python, PX4, credentials or a backend. All displayed mission data is explicitly synthetic.
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+See the [showcase README](frontend/README.md) for screenshots, production commands, an architecture diagram, embedding instructions and fixture regeneration; [QA evidence](frontend/QA.md), [audit](AUDIT.md), [research](RESEARCH.md) and [decisions](DECISIONS.md) cover scope and limitations. The existing Python development commands below remain available.
 
 ## Repository layout
 
