@@ -1,0 +1,16 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "css": "src/modules/aeris/showcase.module.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "aliases": {
+    "components": "@/src/modules/aeris",
+    "ui": "@/src/modules/aeris/ui",
+    "utils": "@/src/modules/aeris/ui/utils"
+  }
+}
